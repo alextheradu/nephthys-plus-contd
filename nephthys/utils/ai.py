@@ -1,3 +1,4 @@
+from collections.abc import Mapping
 from typing import Any
 from typing import Literal
 from typing import NotRequired
@@ -28,7 +29,7 @@ ai_client: AsyncOpenAI | None = (
 class ChoiceQuestion(TypedDict):
     type: Literal["choice"]
     instructions: StructuredGuidance
-    criteria: dict[str, StructuredGuidance | None]
+    criteria: Mapping[str, StructuredGuidance | None]
 
 
 class ChoiceAnswer(TypedDict):
