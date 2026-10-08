@@ -5,7 +5,10 @@ from slack_sdk.web.async_client import AsyncWebClient
 from nephthys.database.tables import Ticket
 from nephthys.utils import ai_help
 
-DISCLAIMER = "_BETA: may be inaccurate, please check or wait for a helper to confirm._"
+DISCLAIMER = (
+    "_DISCLAIMER: this is a beta feature. this is an llm and may make mistakes. "
+    "check important information. a helper will come by soon to confirm._"
+)
 
 
 async def ask_ai(channel: str, thread_ts: str, user_id: str, client: AsyncWebClient):
@@ -36,7 +39,7 @@ async def ask_ai(channel: str, thread_ts: str, user_id: str, client: AsyncWebCli
     await client.chat_postMessage(
         channel=channel,
         thread_ts=thread_ts,
-        text=f"{text}\n\n{DISCLAIMER}",
+        text=f"{DISCLAIMER}\n\n{text}",
         unfurl_links=False,
         unfurl_media=False,
     )
