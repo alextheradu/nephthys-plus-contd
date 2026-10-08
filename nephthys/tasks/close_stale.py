@@ -214,7 +214,9 @@ async def close_stale_tickets():
                         )
                     except Exception as e:
                         # One bad ticket (e.g. cant_delete_message) must not abort the run
-                        logging.error(f"Failed to close stale ticket {ticket.msg_ts}: {e}")
+                        logging.error(
+                            f"Failed to close stale ticket {ticket.msg_ts}: {e}"
+                        )
                         continue
                     stale += 1
 
