@@ -13,6 +13,7 @@ from slack_bolt.async_app import AsyncApp
 from slack_bolt.context.ack.async_ack import AsyncAck
 from slack_sdk.web.async_client import AsyncWebClient
 
+from nephthys.actions.ask_ai import ask_ai
 from nephthys.actions.assign_category_tag import assign_category_tag_callback
 from nephthys.actions.assign_team_tag import assign_team_tag_callback
 from nephthys.actions.create_category_tag import create_category_tag_btn_callback
@@ -89,6 +90,19 @@ async def handle_mark_resolved_button(
     value = body["actions"][0]["value"]
     resolver = body["user"]["id"]
     await resolve(value, resolver, client)
+
+
+@app.action("ask_ai")
+async def handle_ask_ai_button(
+    ack: AsyncAck, body: Dict[str, Any], client: AsyncWebClient
+):
+    await ack()
+    await ask_ai(
+        channel=body["channel"]["id"],
+        thread_ts=body["actions"][0]["value"],
+        user_id=body["user"]["id"],
+        client=client,
+    )
 
 
 @app.options("tag-list")  # compat with old backend msgs

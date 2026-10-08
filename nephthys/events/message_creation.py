@@ -196,7 +196,12 @@ async def handle_new_question(
     try:
         async with perf_timer("Sending user-facing FAQ message"):
             user_facing_message = await send_user_facing_message(
-                event, client, text=user_facing_message_text, ticket_url=ticket_url
+                event,
+                client,
+                text=user_facing_message_text,
+                ticket_url=ticket_url,
+                show_ask_ai=bool(ai_client)
+                and 0 <= env.ai_help_min_tickets < past_tickets,
             )
     except ThreadGoneError:
         logging.warning(
@@ -273,7 +278,11 @@ async def handle_new_question(
 
 
 async def send_user_facing_message(
-    event: dict[str, Any], client: AsyncWebClient, text: str, ticket_url: str
+    event: dict[str, Any],
+    client: AsyncWebClient,
+    text: str,
+    ticket_url: str,
+    show_ask_ai: bool = False,
 ):
     """Send a user-facing message in the question thread with the provided text
     and a resolve button.
@@ -283,10 +292,32 @@ async def send_user_facing_message(
         client: Slack API client.
         text: The message text to display to the user.
         ticket_url: URL to the backend ticket.
+        show_ask_ai: Whether to add the "BETA ask ai" button.
 
     Returns:
         The Slack API response containing the posted message.
     """
+    buttons: list[dict[str, Any]] = [
+        {
+            "type": "button",
+            "text": {
+                "type": "plain_text",
+                "text": env.transcript.resolve_ticket_button,
+            },
+            "style": "primary",
+            "action_id": "mark_resolved",
+            "value": f"{event['ts']}",
+        },
+    ]
+    if show_ask_ai:
+        buttons.append(
+            {
+                "type": "button",
+                "text": {"type": "plain_text", "text": "BETA ask ai"},
+                "action_id": "ask_ai",
+                "value": f"{event['ts']}",
+            }
+        )
     response = await client.chat_postMessage(
         channel=event["channel"],
         text=text,
@@ -295,21 +326,7 @@ async def send_user_facing_message(
                 "type": "section",
                 "text": {"type": "mrkdwn", "text": text},
             },
-            {
-                "type": "actions",
-                "elements": [
-                    {
-                        "type": "button",
-                        "text": {
-                            "type": "plain_text",
-                            "text": env.transcript.resolve_ticket_button,
-                        },
-                        "style": "primary",
-                        "action_id": "mark_resolved",
-                        "value": f"{event['ts']}",
-                    },
-                ],
-            },
+            {"type": "actions", "elements": buttons},
         ],
         thread_ts=event.get("ts"),
         unfurl_links=False,
