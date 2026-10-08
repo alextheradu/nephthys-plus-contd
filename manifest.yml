@@ -18,7 +18,12 @@
     "oauth_config": {
         "scopes": {
             "user": [
-                "chat:write"
+                "bookmarks:read",
+                "channels:read",
+                "chat:write",
+                "files:read",
+                "search:read",
+                "users:read"
             ],
           "bot": [
                 "channels:history",
