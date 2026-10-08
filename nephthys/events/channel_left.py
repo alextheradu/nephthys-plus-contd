@@ -11,16 +11,14 @@ async def channel_left(ack: AsyncAck, event: dict, client: AsyncWebClient):
     user_id = event["user"]
     channel_id = event["channel"]
 
-    if channel_id == env.slack_help_channel:
+    if channel_id not in [env.slack_bts_channel, env.slack_ticket_channel]:
         return
 
-    await User.update({User.helper: False}).where(User.slack_id == user_id)
+    # bts membership is what makes someone a helper, so only leaving it demotes
+    if channel_id == env.slack_bts_channel:
+        await User.update({User.helper: False}).where(User.slack_id == user_id)
 
     try:
-        match channel_id:
-            case env.slack_bts_channel:
-                await client.conversations_kick(channel=channel_id, user=user_id)
-            case env.slack_ticket_channel:
-                await client.conversations_kick(channel=channel_id, user=user_id)
+        await client.conversations_kick(channel=channel_id, user=user_id)
     except SlackApiError:
         pass
