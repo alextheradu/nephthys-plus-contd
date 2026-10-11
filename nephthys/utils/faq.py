@@ -32,8 +32,6 @@ _last_refresh_failed = False
 _EMOJI = re.compile(r":[a-z0-9_+\-]+:")
 _HEADING_TAGS = {"h1", "h2", "h3"}
 _BLOCK_TAGS = {"p", "td", "th"}
-# Shorter sections are just labels or links, not an answer
-_MIN_SECTION_ANSWER_LENGTH = 40
 
 
 def _clean(text: str) -> str:
@@ -139,7 +137,7 @@ class _CanvasFaqParser(HTMLParser):
             ]
             answer = "\n".join(lines)
             if (
-                len(answer) >= _MIN_SECTION_ANSWER_LENGTH
+                answer
                 and "table of contents" not in heading["text"].lower()
             ):
                 self.entries.append(

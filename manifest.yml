@@ -19,11 +19,9 @@
         "scopes": {
             "user": [
                 "bookmarks:read",
-                "channels:read",
                 "chat:write",
                 "files:read",
-                "search:read",
-                "users:read"
+                "search:read"
             ],
           "bot": [
                 "channels:history",
@@ -32,20 +30,13 @@
                 "chat:write",
                 "chat:write.customize",
                 "chat:write.public",
-                "commands",
                 "groups:history",
                 "groups:read",
                 "groups:write",
-                "im:write",
-                "mpim:read",
                 "reactions:read",
                 "reactions:write",
-                "usergroups:read",
-                "usergroups:write",
                 "users:read",
-                "users:read.email",
-                "files:write",
-                "files:read"
+                "files:write"
             ]
         }
     },
