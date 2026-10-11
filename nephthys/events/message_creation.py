@@ -24,10 +24,14 @@ from nephthys.utils import prometheus
 from nephthys.utils.ai import ai_client
 from nephthys.utils.ai import decisions
 from nephthys.utils.env import env
+from nephthys.utils.faq import faq_link_label
+from nephthys.utils.faq import faq_section_url
+from nephthys.utils.faq import find_faq_entry
 from nephthys.utils.logging import send_heartbeat
 from nephthys.utils.performance import perf_timer
 from nephthys.utils.slack_user import get_user_profile
 from nephthys.utils.ticket_methods import delete_and_clean_up_ticket
+from nephthys.utils.ticket_methods import reply_to_ticket
 from nephthys.utils.ticket_methods import ThreadGoneError
 
 # Message subtypes that should be handled by on_message (messages with no subtype are always handled)
@@ -36,6 +40,12 @@ ALLOWED_SUBTYPES = ["file_share", "me_message", "thread_broadcast"]
 TICKET_TITLE_GENERATION_DURATION = Histogram(
     "nephthys_ticket_title_generation_duration_seconds",
     "How long it takes to generate a ticket title using AI",
+)
+
+
+FAQ_MATCH_DURATION = Histogram(
+    "nephthys_faq_match_duration_seconds",
+    "How long it takes to match a ticket to an FAQ entry using AI",
 )
 
 
@@ -275,6 +285,23 @@ async def handle_new_question(
             f"Top-level message for thread_ts={event['ts']} has been deleted. Cleaning up and deleting ticket_id={ticket.id}"
         )
         await delete_and_clean_up_ticket(ticket)
+        return
+
+    async with perf_timer("AI FAQ matching", FAQ_MATCH_DURATION):
+        faq_entry = await find_faq_entry(text)
+
+    if faq_entry:
+        try:
+            await reply_to_ticket(
+                ticket=ticket,
+                client=client,
+                text=env.transcript.faq_suggestion.format(
+                    url=faq_section_url(faq_entry),
+                    question=faq_link_label(faq_entry),
+                ),
+            )
+        except (SlackApiError, ThreadGoneError) as e:
+            logging.warning(f"Failed to send FAQ suggestion message: {e}")
 
 
 async def send_user_facing_message(
@@ -462,6 +489,8 @@ async def generate_ticket_title(text: str) -> str | None:
 
 
 async def generate_category_tag(text: str) -> CategoryTag | None:
+    if not env.ai_category_tagging:
+        return None
     category_tags = await CategoryTag.objects()
     if not category_tags or not ai_client:
         return None

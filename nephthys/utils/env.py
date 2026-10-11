@@ -111,6 +111,14 @@ class Environment:
             "AI_HELP_MODEL", "deepseek/deepseek-v4.1-flash"
         )
         self.ai_help_min_tickets = int(os.environ.get("AI_HELP_MIN_TICKETS", "4"))
+        # Set to false to stop AI from picking category tags for new tickets
+        self.ai_category_tagging = get_environ_bool("AI_CATEGORY_TAGGING", default=True)
+        self.ai_faq_model = os.environ.get("AI_FAQ_MODEL", self.ai_category_model)
+        # Only link an FAQ entry when the model is at least this confident
+        self.ai_faq_min_confidence = float(
+            os.environ.get("AI_FAQ_MIN_CONFIDENCE", "0.6")
+        )
+
         self.otel_logs_url = os.environ.get("OTEL_EXPORTER_OTLP_LOGS_ENDPOINT")
         self.otel_service_name = os.environ.get("OTEL_SERVICE_NAME", "nephthys")
         # Allows easily providing HTTP Basic Auth credentials formatted as user:pass
@@ -202,11 +210,14 @@ class Environment:
         user_token_identity = await self.slack_client.auth_test(
             token=self.slack_user_token
         )
-        user_id = user_token_identity["user_id"]
+        user_id = user_token_identity.get("user_id")
         if not user_id:
-            raise ValueError(
-                f"Unable to get my user ID from Slack API: {user_token_identity}"
+            # e.g. an app-level (xapp-) token was given instead of a user token
+            logging.error(
+                f"SLACK_USER_TOKEN doesn't belong to a user, so workspace admin features are disabled: {user_token_identity}"
             )
+            self._workspace_admin_available = False
+            return False
         user_info_response = await self.slack_client.users_info(user=user_id)
         user_info = user_info_response["user"]
         if not user_info:
