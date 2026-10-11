@@ -4,6 +4,7 @@ from html.parser import HTMLParser
 
 from httpx import HTTPStatusError
 from pydantic import BaseModel
+from slack_sdk.web.async_client import AsyncWebClient
 
 from nephthys.utils.ai import ai_client
 from nephthys.utils.ai import decisions
@@ -103,11 +104,13 @@ async def refresh_faq_entries() -> None:
     if not canvas_id:
         return
     try:
-        info = await env.slack_client.files_info(file=canvas_id)
+        info = await AsyncWebClient(token=env.slack_user_token).files_info(
+            file=canvas_id
+        )
         file: dict = info["file"]  # type: ignore (assuming file exists)
         url = file.get("url_private_download") or file["url_private"]
         async with env.session.get(
-            url, headers={"Authorization": f"Bearer {env.slack_bot_token}"}
+            url, headers={"Authorization": f"Bearer {env.slack_user_token}"}
         ) as res:
             res.raise_for_status()
             html = await res.text()
