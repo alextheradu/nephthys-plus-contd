@@ -29,13 +29,29 @@ faq_entries: list[FaqEntry] = []
 _last_refresh_failed = False
 
 
+_EMOJI = re.compile(r":[a-z0-9_+\-]+:")
+_HEADING_TAGS = {"h1", "h2", "h3"}
+_BLOCK_TAGS = {"p", "td", "th"}
+# Shorter sections are just labels or links, not an answer
+_MIN_SECTION_ANSWER_LENGTH = 40
+
+
+def _clean(text: str) -> str:
+    """Collapse whitespace and drop :emoji: codes."""
+    return " ".join(_EMOJI.sub("", text).split())
+
+
 class _CanvasFaqParser(HTMLParser):
     """Pulls questions and answers out of a canvas's HTML.
 
-    Each top-level bullet is a question, and the bullets nested under it are
-    the answer:
+    Two layouts are understood, and can be mixed in one canvas:
 
-    <ul><li id="...">Question</li><ul><li>Answer</li></ul></ul>
+    - Bullets: each top-level bullet is a question, and the bullets nested
+      under it are the answer:
+      <ul><li id="...">Question</li><ul><li>Answer</li></ul></ul>
+    - Sections: a heading is the question, and the text under it (paragraphs,
+      table cells, plain bullets) up to the next heading is the answer. Only
+      used for a section that has no bullet questions of its own.
     """
 
     def __init__(self):
@@ -44,15 +60,37 @@ class _CanvasFaqParser(HTMLParser):
         self.ul_depth = 0
         self.li: dict | None = None
         self.question: dict | None = None
+        # Section layout
+        self.heading: dict | None = None
+        self.heading_text: list[str] | None = None
+        self.heading_id: str | None = None
+        self.block: list[str] | None = None
+        self.lines: list[str] = []
+        self.section_start = 0
 
     def handle_starttag(self, tag, attrs):
-        if tag == "ul":
+        if tag in _HEADING_TAGS:
+            self._finish_section()
+            self.heading_text = []
+            self.heading_id = dict(attrs).get("id")
+        elif tag == "ul":
             self.ul_depth += 1
         elif tag == "li":
             self.li = {"id": dict(attrs).get("id"), "text": []}
+        elif tag in _BLOCK_TAGS and self.block is None and not self.li:
+            self.block = []
 
     def handle_endtag(self, tag):
-        if tag == "ul":
+        if tag in _HEADING_TAGS and self.heading_text is not None:
+            text = _clean("".join(self.heading_text))
+            self.heading = {"id": self.heading_id, "text": text} if text else None
+            self.heading_text = None
+        elif tag in _BLOCK_TAGS and self.block is not None:
+            text = _clean("".join(self.block))
+            if text:
+                self.lines.append(text)
+            self.block = None
+        elif tag == "ul":
             self.ul_depth -= 1
             if self.ul_depth == 0:
                 self._finish_question()
@@ -68,8 +106,12 @@ class _CanvasFaqParser(HTMLParser):
             self.li = None
 
     def handle_data(self, data):
-        if self.li:
+        if self.heading_text is not None:
+            self.heading_text.append(data)
+        elif self.li:
             self.li["text"].append(data)
+        elif self.block is not None:
+            self.block.append(data)
 
     def _finish_question(self):
         if self.question and self.question["answer"]:
@@ -80,7 +122,36 @@ class _CanvasFaqParser(HTMLParser):
                     answer="\n".join(self.question["answer"]),
                 )
             )
+        elif self.question:
+            # A bullet with nothing under it is just text in the section
+            self.lines.append(_clean(self.question["text"]))
         self.question = None
+
+    def _finish_section(self):
+        """Turn the section that just ended into an entry, unless it already
+        has bullet questions."""
+        heading = self.heading
+        if heading and heading["id"] and len(self.entries) == self.section_start:
+            lines = [
+                line
+                for line in self.lines
+                if not line.lower().startswith("back to table of contents")
+            ]
+            answer = "\n".join(lines)
+            if (
+                len(answer) >= _MIN_SECTION_ANSWER_LENGTH
+                and "table of contents" not in heading["text"].lower()
+            ):
+                self.entries.append(
+                    FaqEntry(
+                        section_id=heading["id"],
+                        question=heading["text"],
+                        answer=answer,
+                    )
+                )
+        self.lines = []
+        self.section_start = len(self.entries)
+        self.heading = None
 
 
 def parse_faq_canvas(html: str) -> list[FaqEntry]:
@@ -89,6 +160,7 @@ def parse_faq_canvas(html: str) -> list[FaqEntry]:
     parser = _CanvasFaqParser()
     parser.feed(html)
     parser.close()
+    parser._finish_section()
 
     def key(question: str) -> str:
         return re.sub(r"[\u2018\u2019]", "'", question).lower()
