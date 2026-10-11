@@ -26,6 +26,15 @@ ai_client: AsyncOpenAI | None = (
 )
 
 
+def provider_routing(model: str) -> dict[str, Any]:
+    """Extra request body that pins Anthropic models to Anthropic's own API
+    (the Hack Club AI proxy passes it on to OpenRouter). Other models are
+    routed as usual."""
+    if model.startswith("anthropic/"):
+        return {"provider": {"only": ["anthropic"], "allow_fallbacks": False}}
+    return {}
+
+
 class ChoiceQuestion(TypedDict):
     type: Literal["choice"]
     instructions: StructuredGuidance

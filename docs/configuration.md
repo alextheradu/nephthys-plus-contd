@@ -58,9 +58,9 @@ You can configure which models are used for different AI tasks.
 <!-- prettier-ignore -->
 | Variable | Required? | Description | Default |
 | -------- | --------- | ----------- | ------- |
-| `AI_TITLE_MODEL` | Optional | Model for generating ticket titles | `deepseek/deepseek-v4.1-flash` |
+| `AI_TITLE_MODEL` | Optional | Model for generating ticket titles | `anthropic/claude-haiku-5.5` |
 | `AI_CATEGORY_MODEL` | Optional | Jev model for categorising tickets | `jev-latest` |
-| `AI_HELP_MODEL` | Optional | Model for the "BETA ask ai" button | `deepseek/deepseek-v4.1-flash` |
+| `AI_HELP_MODEL` | Optional | Model for the "BETA ask ai" button | `anthropic/claude-haiku-5.5` |
 
 ### "BETA ask ai" button
 

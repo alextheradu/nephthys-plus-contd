@@ -17,6 +17,7 @@ from slack_sdk.errors import SlackApiError
 from slack_sdk.web.async_client import AsyncWebClient
 
 from nephthys.utils.ai import ai_client
+from nephthys.utils.ai import provider_routing
 from nephthys.utils.env import env
 
 WORKSPACE_URL = "https://hackclub.slack.com"
@@ -341,6 +342,7 @@ async def answer(channel: str, thread_ts: str) -> str:
                 max_completion_tokens=MAX_OUTPUT_TOKENS,
                 reasoning_effort="low",
                 tools=TOOLS if use_tools else omit,
+                extra_body=provider_routing(model),
             )
         except OpenAIError:
             logging.exception("AI help request failed")

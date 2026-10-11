@@ -102,13 +102,13 @@ class Environment:
             "PROMETHEUS_BASE_URL", "https://prometheus.hackclub.com"
         ).rstrip("/")
         self.ai_title_model = os.environ.get(
-            "AI_TITLE_MODEL", "deepseek/deepseek-v4.1-flash"
+            "AI_TITLE_MODEL", "anthropic/claude-haiku-5.5"
         )
         self.ai_category_model = os.environ.get("AI_CATEGORY_MODEL", "jev-latest")
         self.ai_credit_model = os.environ.get("AI_CREDIT_MODEL", "jev-latest")
         self.ai_stale_model = os.environ.get("AI_STALE_MODEL", "jev-latest")
         self.ai_help_model = os.environ.get(
-            "AI_HELP_MODEL", "deepseek/deepseek-v4.1-flash"
+            "AI_HELP_MODEL", "anthropic/claude-haiku-5.5"
         )
         self.ai_help_min_tickets = int(os.environ.get("AI_HELP_MIN_TICKETS", "4"))
         # Set to false to stop AI from picking category tags for new tickets

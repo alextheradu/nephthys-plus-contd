@@ -23,6 +23,7 @@ from nephthys.macros import run_macro
 from nephthys.utils import prometheus
 from nephthys.utils.ai import ai_client
 from nephthys.utils.ai import decisions
+from nephthys.utils.ai import provider_routing
 from nephthys.utils.env import env
 from nephthys.utils.faq import faq_link_label
 from nephthys.utils.faq import faq_section_url
@@ -447,6 +448,7 @@ async def generate_ticket_title(text: str) -> str | None:
         response: ChatCompletion = await ai_client.chat.completions.create(
             model=model,
             reasoning_effort="low",
+            extra_body=provider_routing(model),
             max_completion_tokens=5000,
             messages=[
                 {
