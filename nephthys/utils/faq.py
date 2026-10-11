@@ -136,10 +136,7 @@ class _CanvasFaqParser(HTMLParser):
                 if not line.lower().startswith("back to table of contents")
             ]
             answer = "\n".join(lines)
-            if (
-                answer
-                and "table of contents" not in heading["text"].lower()
-            ):
+            if answer and "table of contents" not in heading["text"].lower():
                 self.entries.append(
                     FaqEntry(
                         section_id=heading["id"],
