@@ -29,6 +29,7 @@ from nephthys.utils.faq import faq_link_label
 from nephthys.utils.faq import faq_section_url
 from nephthys.utils.faq import find_faq_entry
 from nephthys.utils.performance import perf_timer
+from nephthys.utils.promote import maybe_promote
 from nephthys.utils.slack_user import get_user_profile
 from nephthys.utils.ticket_methods import delete_and_clean_up_ticket
 from nephthys.utils.ticket_methods import reply_to_ticket
@@ -407,6 +408,8 @@ async def on_message(event: dict[str, Any], client: AsyncWebClient):
     if "bot_id" in event and not (event.get("user") and event.get("thread_ts")):
         logging.info(f"Ignoring bot message from {event['bot_id']}")
         return
+
+    maybe_promote(event)
 
     async with perf_timer("DB user lookup"):
         db_user = (

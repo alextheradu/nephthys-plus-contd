@@ -96,6 +96,9 @@ class Environment:
         self.slack_signing_secret = os.environ.get("SLACK_SIGNING_SECRET", "unset")
         self.slack_app_token = os.environ.get("SLACK_APP_TOKEN")
 
+        self.flaron_url = os.environ.get(
+            "FLARON_URL", "https://flaron.halceon.dev"
+        ).rstrip("/")
         self.uptime_url = os.environ.get("UPTIME_URL")
         self.prometheus_api_key = os.environ.get("PROMETHEUS_API_KEY")
         self.prometheus_base_url = os.environ.get(
