@@ -8,7 +8,6 @@ from nephthys.database.enums import TicketStatus
 from nephthys.database.tables import TagsOnTickets
 from nephthys.database.tables import Ticket
 from nephthys.utils.env import env
-from nephthys.utils.logging import send_heartbeat
 from nephthys.utils.stats import calculate_daily_stats
 from nephthys.utils.stats import calculate_overall_stats
 from nephthys.utils.stats import leaderboard_name
@@ -191,12 +190,3 @@ you managed to close a whopping *{stats.closed_today}* tickets in the last 24 ho
 
     except Exception as e:
         logging.error(f"Failed to send daily stats: {e}", exc_info=True)
-        try:
-            await send_heartbeat(
-                "Failed to send daily stats",
-                messages=[str(e)],
-            )
-        except Exception as slack_e:
-            logging.error(
-                f"Could not send error notification to Slack maintainer: {slack_e}"
-            )

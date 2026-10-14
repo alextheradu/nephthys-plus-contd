@@ -1,3 +1,4 @@
+import logging
 from typing import Any
 from typing import Dict
 
@@ -7,7 +8,6 @@ from slack_sdk.web.async_client import AsyncWebClient
 from nephthys.database.tables import User
 from nephthys.database.tables import UserTagSubscription
 from nephthys.events.app_home_opened import open_app_home
-from nephthys.utils.logging import send_heartbeat
 from nephthys.views.home import AppHomeView
 
 
@@ -22,9 +22,7 @@ async def tag_subscribe_callback(
 
     user = await User.objects().where(User.slack_id == slack_id).first()
     if not user:
-        await send_heartbeat(
-            f"Attempted to subscribe to tag by unknown user <@{slack_id}>"
-        )
+        logging.warning(f"Attempted to subscribe to tag by unknown user <@{slack_id}>")
         return
 
     tag_id, tag_name = body["actions"][0]["value"].split(";")

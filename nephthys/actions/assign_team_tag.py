@@ -9,7 +9,6 @@ from nephthys.database.tables import TagsOnTickets
 from nephthys.database.tables import Ticket
 from nephthys.database.tables import User
 from nephthys.database.tables import UserTagSubscription
-from nephthys.utils.logging import send_heartbeat
 from nephthys.utils.ticket_methods import get_backend_message_link
 from nephthys.utils.ticket_methods import get_question_message_link
 
@@ -40,9 +39,7 @@ async def assign_team_tag_callback(
 
     ticket = await Ticket.objects().where(Ticket.ticket_ts == ts).first()
     if not ticket:
-        await send_heartbeat(
-            f"Failed to find ticket with ts {ts} in channel {channel_id}."
-        )
+        logging.warning(f"Failed to find ticket with ts {ts} in channel {channel_id}.")
         return
 
     existing_tags = await TagsOnTickets.objects().where(

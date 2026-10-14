@@ -13,7 +13,6 @@ from nephthys.database.tables import User
 from nephthys.utils.ai import ai_client
 from nephthys.utils.ai import decisions
 from nephthys.utils.env import env
-from nephthys.utils.logging import send_heartbeat
 
 
 async def get_is_stale(ts: str, stale_ticket_days: int, max_retries: int = 3) -> bool:
@@ -27,7 +26,6 @@ async def get_is_stale(ts: str, stale_ticket_days: int, max_retries: int = 3) ->
             )
             if not last_reply:
                 logging.error("No replies found - this should never happen")
-                await send_heartbeat(f"No replies found for ticket {ts}")
                 return False
             return (
                 datetime.now(tz=timezone.utc)
@@ -51,7 +49,6 @@ async def get_is_stale(ts: str, stale_ticket_days: int, max_retries: int = 3) ->
                 logging.warning(
                     f"Thread not found for ticket {ts}. This might be a deleted thread."
                 )
-                await send_heartbeat(f"Thread not found for ticket {ts}.")
                 maintainer_user = (
                     await User.objects()
                     .where(User.slack_id == env.slack_maintainer_id)
@@ -75,9 +72,6 @@ async def get_is_stale(ts: str, stale_ticket_days: int, max_retries: int = 3) ->
                 return False
             else:
                 logging.error(
-                    f"Error fetching replies for ticket {ts}: {e.response['error']}"
-                )
-                await send_heartbeat(
                     f"Error fetching replies for ticket {ts}: {e.response['error']}"
                 )
                 return False
@@ -161,9 +155,6 @@ async def close_stale_tickets():
         return
 
     logging.info(f"Closing stale tickets, threshold_days={stale_ticket_days}")
-    await send_heartbeat(
-        f"Closing stale tickets (threshold: {stale_ticket_days} days)..."
-    )
 
     try:
         tickets = await Ticket.objects(Ticket.opened_by, Ticket.assigned_to).where(
@@ -224,9 +215,6 @@ async def close_stale_tickets():
             if i + batch_size < len(tickets):
                 await asyncio.sleep(5)
 
-        await send_heartbeat(f"Closed {stale} stale tickets.")
-
         logging.info(f"Closed stale tickets. count={stale}")
     except Exception as e:
-        logging.error(f"Error closing stale tickets: {e}")
-        await send_heartbeat(f"Error closing stale tickets: {e}")
+        logging.error(f"Error closing stale tickets: {e}", exc_info=True)

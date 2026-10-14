@@ -11,7 +11,6 @@ from nephthys.errors.errors import PermissionDenied
 from nephthys.errors.errors import TicketNotClosedError
 from nephthys.events.message.send_backend_message import send_backend_message
 from nephthys.utils.env import env
-from nephthys.utils.logging import send_heartbeat
 from nephthys.utils.permissions import can_resolve
 from nephthys.utils.slack_user import get_user_profile
 from nephthys.utils.ticket_methods import reply_to_ticket
@@ -92,11 +91,6 @@ async def reopen(ticket: Ticket, reopened_by: User, client: AsyncWebClient):
         timestamp=ticket.msg_ts,
     )
 
-    await send_heartbeat(
-        f"Ticket {ticket.id} reopened by <@{reopened_by.slack_id}>",
-        messages=[
-            f"Ticket ID: {ticket.id}",
-            f"Original TS: {ticket.msg_ts}",
-            f"New TS: {new_ticket_ts}",
-        ],
+    logging.info(
+        f"Ticket {ticket.id} reopened by <@{reopened_by.slack_id}> original_ts={ticket.msg_ts} new_ts={new_ticket_ts}"
     )

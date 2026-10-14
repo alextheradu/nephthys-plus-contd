@@ -7,7 +7,6 @@ from slack_sdk.web.async_client import AsyncWebClient
 
 from nephthys.database.tables import Ticket
 from nephthys.utils.env import env
-from nephthys.utils.logging import send_heartbeat
 from nephthys.utils.ticket_methods import delete_and_clean_up_ticket
 
 
@@ -59,7 +58,6 @@ async def handle_question_deletion(
     if not ticket:
         message = f"Deleted question doesn't have an associated ticket in DB, ts={deleted_msg['ts']}"
         logging.warning(message)
-        await send_heartbeat(message)
         return
     await delete_and_clean_up_ticket(ticket)
 

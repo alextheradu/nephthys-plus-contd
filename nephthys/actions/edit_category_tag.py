@@ -7,7 +7,6 @@ from slack_sdk.web.async_client import AsyncWebClient
 from nephthys.database.tables import CategoryTag
 from nephthys.database.tables import User
 from nephthys.events.app_home_opened import open_app_home
-from nephthys.utils.logging import send_heartbeat
 from nephthys.views.home import AppHomeView
 from nephthys.views.modals.edit_category_tag import get_edit_category_tag_modal
 
@@ -21,7 +20,7 @@ async def edit_category_tag_btn_callback(
 
     user = await User.objects().where(User.slack_id == user_id).first()
     if not user or not user.admin:
-        await send_heartbeat(
+        logging.warning(
             f"Attempted to open edit category tag modal by non-admin user <@{user_id}>"
         )
         return
@@ -65,7 +64,7 @@ async def edit_category_tag_view_callback(
     user = await User.objects().where(User.slack_id == user_id).first()
     if not user or not user.admin:
         await ack()
-        await send_heartbeat(
+        logging.warning(
             f"Attempted to edit category tag by non-admin user <@{user_id}>"
         )
         return

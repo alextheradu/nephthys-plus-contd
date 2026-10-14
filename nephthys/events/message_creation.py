@@ -28,7 +28,6 @@ from nephthys.utils.env import env
 from nephthys.utils.faq import faq_link_label
 from nephthys.utils.faq import faq_section_url
 from nephthys.utils.faq import find_faq_entry
-from nephthys.utils.logging import send_heartbeat
 from nephthys.utils.performance import perf_timer
 from nephthys.utils.slack_user import get_user_profile
 from nephthys.utils.ticket_methods import delete_and_clean_up_ticket
@@ -430,11 +429,11 @@ async def on_message(event: dict[str, Any], client: AsyncWebClient):
     if env.uptime_url and env.environment == "production":
         async with env.session.get(env.uptime_url) as res:
             if res.status != 200:
-                await send_heartbeat(
+                logging.error(
                     f"Failed to ping uptime URL: {res.status} - {await res.text()}"
                 )
             else:
-                await send_heartbeat(
+                logging.info(
                     f"Successfully pinged uptime URL: {res.status} - {await res.text()}"
                 )
 
@@ -470,11 +469,11 @@ async def generate_ticket_title(text: str) -> str | None:
             ],
         )
     except OpenAIError as e:
-        await send_heartbeat(f"Failed to get AI response for ticket creation: {e}")
+        logging.error(f"Failed to get AI response for ticket creation: {e}")
         return None
 
     if not (len(response.choices) and response.choices[0].message.content):
-        await send_heartbeat(f"AI title generation is missing content: {response}")
+        logging.error(f"AI title generation is missing content: {response}")
         return None
 
     # Track token usage
@@ -518,13 +517,11 @@ async def generate_category_tag(text: str) -> CategoryTag | None:
         logging.error(
             f'Failed to categorise ticket text="{text}" error="{e}" response="{e.response.text}"'
         )
-        await send_heartbeat(
-            f"Failed to get AI response for tag generation: {e}", [e.response.text]
-        )
         return None
     except Exception as e:
-        logging.error(f'Failed to categorise ticket text="{text}" error="{e}"')
-        await send_heartbeat(f"Unexpected error in tag generation: {e}")
+        logging.error(
+            f'Failed to categorise ticket text="{text}" error="{e}"', exc_info=True
+        )
         return None
 
     category_answer = response["answers"].get("category")

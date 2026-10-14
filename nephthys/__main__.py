@@ -20,6 +20,7 @@ from nephthys.utils.faq import refresh_faq_entries
 from nephthys.utils.logging import parse_level_name
 from nephthys.utils.logging import send_heartbeat
 from nephthys.utils.logging import setup_otel_logging
+from nephthys.utils.logging import SlackHandler
 from nephthys.utils.slack import app as slack_app
 from piccolo_conf import DB
 
@@ -37,7 +38,7 @@ logging.root.setLevel(logging.NOTSET)
 stderr_logger = logging.StreamHandler()
 stderr_logger.setLevel(parse_level_name(env.log_level_stderr))
 stderr_logger.setFormatter(logging.Formatter(logging.BASIC_FORMAT))
-logging.getLogger().handlers = [stderr_logger]
+logging.getLogger().handlers = [stderr_logger, SlackHandler()]
 if env.otel_logs_url:
     setup_otel_logging()
 

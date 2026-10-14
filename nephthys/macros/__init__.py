@@ -1,3 +1,4 @@
+import logging
 from typing import Any
 
 from nephthys.database.enums import TicketStatus
@@ -23,7 +24,6 @@ from nephthys.macros.types import Macro
 from nephthys.macros.types import ReplyMacro
 from nephthys.utils import prometheus
 from nephthys.utils.env import env
-from nephthys.utils.logging import send_heartbeat
 
 macro_list: list[type[Macro]] = [
     Resolve,
@@ -99,8 +99,7 @@ async def run_macro(
         return True
 
     await error_msg(f"`?{name}` is not a valid macro.")
-    await send_heartbeat(
-        f"Macro {name} not found from <@{helper.slack_id}>.",
-        messages=[f"Ticket ID: {ticket.id}", f"Helper ID: {helper.id}"],
+    logging.warning(
+        f"Macro {name} not found from <@{helper.slack_id}>. ticket_id={ticket.id} helper_id={helper.id}"
     )
     return False

@@ -15,7 +15,6 @@ from nephthys.database.tables import User
 from nephthys.utils.ai import decisions
 from nephthys.utils.delete_thread import add_thread_to_delete_queue
 from nephthys.utils.env import env
-from nephthys.utils.logging import send_heartbeat
 from nephthys.utils.permissions import can_resolve
 from nephthys.utils.slack_user import get_user_profile
 from nephthys.utils.ticket_methods import delete_message
@@ -82,17 +81,15 @@ async def resolve(
 ):
     resolving_user = await User.objects().where(User.slack_id == resolver).first()
     if not resolving_user:
-        await send_heartbeat(
-            f"User {resolver} attempted to resolve ticket with ts {ts} but isn't in the database.",
-            messages=[f"Ticket TS: {ts}", f"Resolver ID: {resolver}"],
+        logging.warning(
+            f"User {resolver} attempted to resolve ticket with ts {ts} but isn't in the database."
         )
         return
 
     allowed = await can_resolve(resolving_user.slack_id, resolving_user.id, ts)
     if not allowed:
-        await send_heartbeat(
-            f"User {resolver} attempted to resolve ticket with ts {ts} without permission.",
-            messages=[f"Ticket TS: {ts}", f"Resolver ID: {resolver}"],
+        logging.warning(
+            f"User {resolver} attempted to resolve ticket with ts {ts} without permission."
         )
         await client.chat_postEphemeral(
             channel=env.slack_help_channel,
@@ -205,9 +202,8 @@ async def resolve(
 
     tkt = await Ticket.objects().where(Ticket.msg_ts == ts).first()
     if not tkt:
-        await send_heartbeat(
-            f"Failed to resolve ticket with ts {ts} by {resolver}. Ticket not found.",
-            messages=[f"Ticket TS: {ts}", f"Resolver ID: {resolver}"],
+        logging.warning(
+            f"Failed to resolve ticket with ts {ts} by {resolver}. Ticket not found."
         )
         return
 

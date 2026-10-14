@@ -1,10 +1,11 @@
+import logging
+
 from nephthys.actions.resolve import resolve
 from nephthys.database.enums import TicketStatus
 from nephthys.database.tables import Ticket
 from nephthys.database.tables import User
 from nephthys.macros.types import Macro
 from nephthys.utils.env import env
-from nephthys.utils.logging import send_heartbeat
 
 
 class Resolve(Macro):
@@ -15,9 +16,8 @@ class Resolve(Macro):
         """
         Resolve the ticket with the given arguments.
         """
-        await send_heartbeat(
-            f"Resolving ticket with ts {ticket.msg_ts} by <@{helper.slack_id}>.",
-            messages=[f"Ticket ID: {ticket.id}", f"Helper ID: {helper.id}"],
+        logging.info(
+            f"Resolving ticket with ts {ticket.msg_ts} by <@{helper.slack_id}>. ticket_id={ticket.id} helper_id={helper.id}"
         )
         if not ticket.status == TicketStatus.CLOSED:
             await resolve(
@@ -26,8 +26,7 @@ class Resolve(Macro):
                 client=env.slack_client,
             )
         else:
-            await send_heartbeat(
-                f"Ticket with ts {ticket.msg_ts} is already closed. No action taken. (Trying to resolve for <@{helper.slack_id}>).",
-                messages=[f"Ticket ID: {ticket.id}", f"Helper ID: {helper.id}"],
+            logging.info(
+                f"Ticket with ts {ticket.msg_ts} is already closed. No action taken. (Trying to resolve for <@{helper.slack_id}>). ticket_id={ticket.id} helper_id={helper.id}"
             )
             return

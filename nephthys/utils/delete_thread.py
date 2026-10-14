@@ -1,10 +1,10 @@
 import asyncio
+import logging
 
 from slack_sdk.errors import SlackApiError
 from slack_sdk.web.async_client import AsyncWebClient
 
 from nephthys.utils.env import env
-from nephthys.utils.logging import send_heartbeat
 
 client = AsyncWebClient(token=env.slack_bot_token)
 
@@ -28,7 +28,7 @@ async def process_queue():
                 as_user=True,
                 token=env.slack_user_token,
             )
-            await send_heartbeat(
+            logging.info(
                 f"Successfully deleted message {message_ts} in channel {channel_id}."
             )
         except SlackApiError as e:
@@ -37,18 +37,17 @@ async def process_queue():
                 await asyncio.sleep(retry_after)
                 await delete_queue.put((channel_id, message_ts))
             elif e.response and e.response["error"] == "message_not_found":
-                await send_heartbeat(
+                logging.info(
                     f"Message {message_ts} in channel {channel_id} not found. It might have been already deleted."
                 )
             else:
-                await send_heartbeat(
-                    f"Failed to delete message in channel {channel_id} with ts {message_ts}",
-                    messages=[f"Error: {e.response['error']}"],
+                logging.error(
+                    f"Failed to delete message in channel {channel_id} with ts {message_ts}: {e.response['error']}"
                 )
         except Exception as e:
-            await send_heartbeat(
-                f"An unexpected error occurred while processing delete queue for message {message_ts} in channel {channel_id}",
-                messages=[f"Error: {str(e)}"],
+            logging.error(
+                f"An unexpected error occurred while processing delete queue for message {message_ts} in channel {channel_id}: {e}",
+                exc_info=True,
             )
             await delete_queue.put((channel_id, message_ts))
         finally:
@@ -62,14 +61,12 @@ async def add_message_to_delete_queue(channel_id: str, message_ts: str):
     Adds a message identifier (channel_id, message_ts) to the asynchronous delete queue.
     """
     if not channel_id or not message_ts:
-        await send_heartbeat(
+        logging.error(
             "Attempted to add invalid message to delete queue: channel_id or message_ts is missing."
         )
         return
     await delete_queue.put((channel_id, message_ts))
-    await send_heartbeat(
-        f"Added message {message_ts} in channel {channel_id} to delete queue."
-    )
+    logging.info(f"Added message {message_ts} in channel {channel_id} to delete queue.")
 
 
 async def add_thread_to_delete_queue(channel_id: str, thread_ts: str):
@@ -78,7 +75,7 @@ async def add_thread_to_delete_queue(channel_id: str, thread_ts: str):
     This is used to delete entire threads in Slack.
     """
     if not channel_id or not thread_ts:
-        await send_heartbeat(
+        logging.error(
             "Attempted to add invalid thread to delete queue: channel_id or thread_ts is missing."
         )
         return
@@ -91,6 +88,4 @@ async def add_thread_to_delete_queue(channel_id: str, thread_ts: str):
         if "ts" in message:
             await delete_queue.put((channel_id, message["ts"]))
 
-    await send_heartbeat(
-        f"Added thread {thread_ts} in channel {channel_id} to delete queue."
-    )
+    logging.info(f"Added thread {thread_ts} in channel {channel_id} to delete queue.")

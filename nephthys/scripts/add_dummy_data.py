@@ -8,7 +8,6 @@ from random import randint
 from nephthys.database.enums import TicketStatus
 from nephthys.database.tables import Ticket
 from nephthys.database.tables import User
-from nephthys.utils.logging import send_heartbeat
 
 
 async def get_default_user() -> User:
@@ -39,7 +38,6 @@ async def create_dummy_records(num_records: int, assigned_to: int | None = None)
             closed_at=datetime.fromtimestamp(timestamp + 110),
         )
         await ticket.save()
-    await send_heartbeat(f"Created {num_records} dummy ticket records.")
     logging.info(f"Successfully created {num_records} dummy ticket records.")
 
 

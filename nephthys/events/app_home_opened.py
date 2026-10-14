@@ -8,8 +8,6 @@ from slack_sdk.errors import SlackApiError
 from slack_sdk.web.async_client import AsyncWebClient
 
 from nephthys.database.tables import User
-from nephthys.utils.env import env
-from nephthys.utils.logging import send_heartbeat
 from nephthys.utils.performance import perf_timer
 from nephthys.views.home import AppHomeView
 from nephthys.views.home.assigned import get_assigned_tickets_view
@@ -122,7 +120,7 @@ async def open_app_home(
             await user.save()
 
     except Exception as e:
-        logging.error(f"Error opening app home: {e}")
+        logging.error(f"Error opening app home for <@{user_id}>: {e}", exc_info=True)
         tb = traceback.format_exception(e)
 
         tb_str = "".join(tb)
@@ -130,11 +128,6 @@ async def open_app_home(
         view = get_error_view(
             f"An error occurred while opening the app home: {e}",
             traceback=tb_str,
-        )
-        err_type = type(e).__name__
-        await send_heartbeat(
-            f"`{err_type}` opening app home for <@{user_id}>",
-            messages=[f"```{tb_str}```", f"cc <@{env.slack_maintainer_id}>"],
         )
         await publish_view(client, user_id, view)
 

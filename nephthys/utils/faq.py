@@ -10,7 +10,6 @@ from nephthys.utils.ai import ai_client
 from nephthys.utils.ai import decisions
 from nephthys.utils.ai import StructuredGuidance
 from nephthys.utils.env import env
-from nephthys.utils.logging import send_heartbeat
 
 NO_MATCH = "none"
 
@@ -187,7 +186,7 @@ async def refresh_faq_entries() -> None:
         logging.error(f"Failed to fetch FAQ canvas canvas_id={canvas_id} error={e}")
     if not entries:
         if not _last_refresh_failed:
-            await send_heartbeat(
+            logging.error(
                 f"Couldn't read any questions from FAQ canvas {canvas_id}, keeping the old copy. Check the logs!"
             )
         _last_refresh_failed = True
@@ -243,13 +242,9 @@ async def find_faq_entry(text: str) -> FaqEntry | None:
         logging.error(
             f'Failed to match FAQ text="{text}" error="{e}" response="{e.response.text}"'
         )
-        await send_heartbeat(
-            f"Failed to get AI response for FAQ matching: {e}", [e.response.text]
-        )
         return None
     except Exception as e:
-        logging.error(f'Failed to match FAQ text="{text}" error="{e}"')
-        await send_heartbeat(f"Unexpected error in FAQ matching: {e}")
+        logging.error(f'Failed to match FAQ text="{text}" error="{e}"', exc_info=True)
         return None
 
     answer = response["answers"].get("faq")
