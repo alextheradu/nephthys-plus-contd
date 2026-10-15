@@ -81,14 +81,14 @@ async def resolve(
 ):
     resolving_user = await User.objects().where(User.slack_id == resolver).first()
     if not resolving_user:
-        logging.warning(
+        logging.info(
             f"User {resolver} attempted to resolve ticket with ts {ts} but isn't in the database."
         )
         return
 
     allowed = await can_resolve(resolving_user.slack_id, resolving_user.id, ts)
     if not allowed:
-        logging.warning(
+        logging.info(
             f"User {resolver} attempted to resolve ticket with ts {ts} without permission."
         )
         await client.chat_postEphemeral(

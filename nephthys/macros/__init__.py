@@ -99,7 +99,7 @@ async def run_macro(
         return True
 
     await error_msg(f"`?{name}` is not a valid macro.")
-    logging.warning(
+    logging.info(
         f"Macro {name} not found from <@{helper.slack_id}>. ticket_id={ticket.id} helper_id={helper.id}"
     )
     return False

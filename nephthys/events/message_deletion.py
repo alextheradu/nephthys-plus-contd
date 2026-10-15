@@ -39,7 +39,7 @@ async def handle_question_deletion(
     for msg in messages or []:
         if msg["ts"] == deleted_msg["ts"]:
             continue  # Ignore top-level message
-        if msg["user"] == bot_user_id:
+        if msg.get("user") == bot_user_id:
             bot_replies.append(msg)
         else:
             non_bot_replies.append(msg)
