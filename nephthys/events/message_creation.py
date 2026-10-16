@@ -24,6 +24,7 @@ from nephthys.utils import prometheus
 from nephthys.utils.ai import ai_client
 from nephthys.utils.ai import decisions
 from nephthys.utils.ai import provider_routing
+from nephthys.utils.attachments import attachment_parts
 from nephthys.utils.env import env
 from nephthys.utils.faq import faq_link_label
 from nephthys.utils.faq import faq_section_url
@@ -223,7 +224,7 @@ async def handle_new_question(
     async with perf_timer(
         "AI ticket title generation", TICKET_TITLE_GENERATION_DURATION
     ):
-        title = await generate_ticket_title(text)
+        title = await generate_ticket_title(text, event.get("files"))
 
     async with perf_timer(
         "AI category tag generation", TICKET_CATEGORY_GENERATION_DURATION
@@ -441,9 +442,17 @@ async def on_message(event: dict[str, Any], client: AsyncWebClient):
                 )
 
 
-async def generate_ticket_title(text: str) -> str | None:
+async def generate_ticket_title(
+    text: str, files: list[dict[str, Any]] | None = None
+) -> str | None:
     if not ai_client:
         return None
+
+    prompt = f"Here is a message from a user: {text or '(no text)'}\n\nPlease give this ticket a title."
+    file_parts = await attachment_parts(files or [])
+    user_content: str | list[Any] = (
+        [{"type": "text", "text": prompt}, *file_parts] if file_parts else prompt
+    )
 
     model = env.ai_title_model
     try:
@@ -459,7 +468,7 @@ async def generate_ticket_title(text: str) -> str | None:
                         "You are a helpful assistant that helps organise tickets for Hack Club's support team. You're going to take in a message and give it a title. "
                         "The title will be used for internal dashboards, short ticket lists, and other similar places. "
                         "You will return no other content. Use proper sentence case, not title case. Avoid quote marks."
-                        "Even if it's silly please summarise it. Be aware, you cannot see uploaded attachments. "
+                        "Even if it's silly please summarise it. You can see attached images, PDFs and text files, but not other kinds of file. "
                         "Use no more than 7 words, but as few as possible. "
                         "Some internal terms you should spell/capitalise correctly: Hack Club, Hackatime, Stardance. "
                         "Also correctly capitalise terms like VSCode, PyCharm, API, and GitHub."
@@ -467,7 +476,7 @@ async def generate_ticket_title(text: str) -> str | None:
                 },
                 {
                     "role": "user",
-                    "content": f"Here is a message from a user: {text}\n\nPlease give this ticket a title.",
+                    "content": user_content,
                 },
             ],
         )
