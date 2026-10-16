@@ -33,6 +33,8 @@ from nephthys.utils.flaron import is_not_identity_verified
 from nephthys.utils.performance import perf_timer
 from nephthys.utils.promote import maybe_promote
 from nephthys.utils.slack_user import get_user_profile
+from nephthys.utils.stats import format_wait
+from nephthys.utils.stats import median_wait_minutes
 from nephthys.utils.ticket_methods import delete_and_clean_up_ticket
 from nephthys.utils.ticket_methods import reply_to_ticket
 from nephthys.utils.ticket_methods import ThreadGoneError
@@ -206,6 +208,18 @@ async def handle_new_question(
     )
     ticket_url = f"https://hackclub.slack.com/archives/{env.slack_ticket_channel}/p{ticket_message_ts.replace('.', '')}"
 
+    wait_estimate = None
+    if env.transcript.wait_time_estimate:
+        try:
+            async with perf_timer("Calculating median wait time"):
+                median_wait = await median_wait_minutes()
+            if median_wait is not None:
+                wait_estimate = env.transcript.wait_time_estimate.replace(
+                    "{wait}", format_wait(median_wait)
+                )
+        except Exception:
+            logging.error("Failed to calculate the median wait time", exc_info=True)
+
     try:
         async with perf_timer("Sending user-facing FAQ message"):
             user_facing_message = await send_user_facing_message(
@@ -215,6 +229,7 @@ async def handle_new_question(
                 ticket_url=ticket_url,
                 show_ask_ai=bool(ai_client)
                 and 0 <= env.ai_help_min_tickets < past_tickets,
+                wait_estimate=wait_estimate,
             )
     except ThreadGoneError:
         logging.warning(
@@ -316,6 +331,7 @@ async def send_user_facing_message(
     text: str,
     ticket_url: str,
     show_ask_ai: bool = False,
+    wait_estimate: str | None = None,
 ):
     """Send a user-facing message in the question thread with the provided text
     and a resolve button.
@@ -326,6 +342,7 @@ async def send_user_facing_message(
         text: The message text to display to the user.
         ticket_url: URL to the backend ticket.
         show_ask_ai: Whether to add the "BETA ask ai" button.
+        wait_estimate: Small context line under the buttons with the typical wait.
 
     Returns:
         The Slack API response containing the posted message.
@@ -351,16 +368,24 @@ async def send_user_facing_message(
                 "value": f"{event['ts']}",
             }
         )
+    blocks: list[dict[str, Any]] = [
+        {
+            "type": "section",
+            "text": {"type": "mrkdwn", "text": text},
+        },
+        {"type": "actions", "elements": buttons},
+    ]
+    if wait_estimate:
+        blocks.append(
+            {
+                "type": "context",
+                "elements": [{"type": "mrkdwn", "text": wait_estimate}],
+            }
+        )
     response = await client.chat_postMessage(
         channel=event["channel"],
         text=text,
-        blocks=[
-            {
-                "type": "section",
-                "text": {"type": "mrkdwn", "text": text},
-            },
-            {"type": "actions", "elements": buttons},
-        ],
+        blocks=blocks,
         thread_ts=event.get("ts"),
         unfurl_links=False,
         unfurl_media=False,

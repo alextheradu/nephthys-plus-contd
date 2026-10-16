@@ -1,7 +1,10 @@
 from collections import Counter
 from dataclasses import dataclass
 from datetime import datetime
+from datetime import timedelta
+from datetime import UTC
 from statistics import fmean
+from statistics import median
 from typing import TypedDict
 
 from nephthys.database.enums import TicketStatus
@@ -85,6 +88,50 @@ def calculate_hang_times(
             continue
         hang_times.append((tkt.assigned_at - tkt.created_at).total_seconds() / 60)
     return hang_times
+
+
+WAIT_ESTIMATE_DAYS = 7
+WAIT_ESTIMATE_MIN_TICKETS = 5
+
+
+async def median_wait_minutes(
+    days: int = WAIT_ESTIMATE_DAYS, min_tickets: int = WAIT_ESTIMATE_MIN_TICKETS
+) -> float | None:
+    """Median minutes someone has waited for a first helper reply, over recent tickets.
+
+    Tickets that got a reply count how long they waited. Tickets still waiting
+    count up to now, so a growing backlog pushes the estimate up. Tickets closed
+    without any helper reply (e.g. the poster resolved it themselves) didn't wait
+    on anyone, so they're left out. Returns None if there are too few tickets to
+    say anything useful.
+    """
+    now = datetime.now(UTC)
+    tickets = await Ticket.objects().where(
+        Ticket.created_at >= now - timedelta(days=days)
+    )
+    waits: list[float] = []
+    for tkt in tickets:
+        if tkt.assigned_at:
+            waits.append((tkt.assigned_at - tkt.created_at).total_seconds() / 60)
+        elif tkt.status != TicketStatus.CLOSED:
+            waits.append((now - tkt.created_at).total_seconds() / 60)
+    if len(waits) < min_tickets:
+        return None
+    return median(waits)
+
+
+def format_wait(minutes: float) -> str:
+    """A rough, human wait time like "12 minutes" or "3 hours"."""
+    if minutes < 1:
+        return "under a minute"
+    if minutes < 60:
+        n = round(minutes)
+        return f"{n} minute{'' if n == 1 else 's'}"
+    hours = minutes / 60
+    if hours < 48:
+        n = round(hours)
+        return f"{n} hour{'' if n == 1 else 's'}"
+    return f"{round(hours / 24)} days"
 
 
 def calculate_resolution_times(tickets: list[Ticket]) -> list[float]:

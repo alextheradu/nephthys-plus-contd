@@ -70,6 +70,10 @@ When a question has images, PDFs or text files attached, they are sent to `AI_TI
 
 When picking an FAQ entry, the bot looks up the asker on Flaron (`FLARON_URL`, default `https://flaron.halceon.dev`). If they haven't been identity verified, the model is told that and nothing else: the Flaron data itself is never sent to it. If the lookup fails or the status is unclear, matching just proceeds without the hint.
 
+### Wait time estimate
+
+The welcome message in a new question's thread ends with a line like "typical wait right now: about 25 minutes". It's the median time to a first helper reply over the last 7 days. Tickets still waiting count up to now, and tickets closed without a helper reply are ignored. Nothing is shown until there are at least 5 tickets in that window. Edit or empty the transcript's `wait_time_estimate` to change or remove it.
+
 ### "BETA ask ai" button
 
 New tickets from users with more than `AI_HELP_MIN_TICKETS` past tickets get a **BETA ask ai** button. Clicking it makes the bot search public Slack messages, channel bookmarks, canvases and web pages, then reply in the thread with a cited answer (searching and reading bookmarks, canvases and files uses `SLACK_USER_TOKEN`, which needs the `search:read`, `bookmarks:read`, `files:read`, `channels:read` and `users:read` user scopes) and a "may be inaccurate" disclaimer. Helpers still follow up as normal.

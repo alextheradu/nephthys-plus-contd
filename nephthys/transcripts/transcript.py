@@ -65,6 +65,11 @@ class Transcript(BaseModel):
 
     ticket_create: str = Field(default="", description="Message for ticket creation")
 
+    wait_time_estimate: str = Field(
+        default="_typical wait right now: about {wait}_",
+        description="Small line under the welcome message. {wait} is replaced with the median time to a first helper reply over the last 7 days. Leave empty to turn it off",
+    )
+
     resolve_ticket_button: str = Field(
         default="Mark as resolved",
         description="Text for the green resolve-ticket button",
