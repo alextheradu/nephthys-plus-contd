@@ -26,9 +26,10 @@ from nephthys.utils.ai import decisions
 from nephthys.utils.ai import provider_routing
 from nephthys.utils.attachments import attachment_parts
 from nephthys.utils.env import env
+from nephthys.utils.faq import event_suggestion
 from nephthys.utils.faq import faq_link_label
 from nephthys.utils.faq import faq_section_url
-from nephthys.utils.faq import find_faq_entry
+from nephthys.utils.faq import match_faq
 from nephthys.utils.flaron import is_not_identity_verified
 from nephthys.utils.performance import perf_timer
 from nephthys.utils.promote import maybe_promote
@@ -309,18 +310,19 @@ async def handle_new_question(
         not_verified = await is_not_identity_verified(author_id)
 
     async with perf_timer("AI FAQ matching", FAQ_MATCH_DURATION):
-        faq_entry = await find_faq_entry(text, not_identity_verified=not_verified)
+        faq_match = await match_faq(text, not_identity_verified=not_verified)
 
-    if faq_entry:
+    suggestion = None
+    if faq_match.entry:
+        suggestion = env.transcript.faq_suggestion.format(
+            url=faq_section_url(faq_match.entry),
+            question=faq_link_label(faq_match.entry),
+        )
+    elif faq_match.event:
+        suggestion = event_suggestion(faq_match.event)
+    if suggestion:
         try:
-            await reply_to_ticket(
-                ticket=ticket,
-                client=client,
-                text=env.transcript.faq_suggestion.format(
-                    url=faq_section_url(faq_entry),
-                    question=faq_link_label(faq_entry),
-                ),
-            )
+            await reply_to_ticket(ticket=ticket, client=client, text=suggestion)
         except (SlackApiError, ThreadGoneError) as e:
             logging.warning(f"Failed to send FAQ suggestion message: {e}")
 

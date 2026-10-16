@@ -13,6 +13,7 @@ class Help(Transcript):
 
     faq_link: str = "https://hackclub.enterprise.slack.com/docs/T0266FRGM/F0C8ELVH27K"
     faq_canvas_id: str | None = "F0C8ELVH27K"
+    faq_events_question: str | None = "Support for Hack Club events"
 
     first_ticket_create: str = f"""
 hi (user)! seems like it's your first time, welcome to the help channel! someone will be here soon to help answer your question! for now, feel free to look at the <{faq_link}|faq>, it answers some common questions and gives basic information. 

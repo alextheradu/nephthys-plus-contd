@@ -55,6 +55,16 @@ class Transcript(BaseModel):
         description="Sent as a reply in the thread when the AI finds a matching FAQ entry",
     )
 
+    faq_events_question: str | None = Field(
+        default=None,
+        description="The FAQ canvas question whose answer lists each event followed by its help channel. When set, the AI can tell people which event's help channel to ask in. Leave unset for programs without such a list",
+    )
+
+    event_channel_suggestion: str = Field(
+        default="hey, is this {program}? if so then ask in {channel}",
+        description="Sent as a reply when the AI thinks the question is about a specific event. {program} is the event's name and {channel} is its help channel",
+    )
+
     identity_help_channel: str = Field(
         default="C092833JXKK", description="Identity help channel ID"
     )

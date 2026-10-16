@@ -21,6 +21,8 @@ You can assign yourself to get notified for specific tags on the app home
 
 If a program's transcript sets `faq_canvas_id` (the `F...` ID of its FAQ canvas), Nephthys reads the canvas on startup and every 15 minutes. When a new ticket comes in, AI picks the FAQ question that answers it (if any) and replies in the thread with a direct link to it. Each top-level bullet in the canvas is treated as a question, with the bullets nested under it as the answer. Needs `OPENROUTER_API_KEY` and the `files:read` scope.
 
+If the transcript also sets `faq_events_question` (the canvas question whose answer lists each event followed by its help channel), AI can tell when a question is about one specific event and replies with "hey, is this *event*? if so then ask in *channel*" (the `event_channel_suggestion` text), instead of the generic events link. Programs that don't set it never get this.
+
 ### Macros
 
 Sometimes it’s nice to be able to do things quickly... Here’s where macros come in! Send one of the following messages in an open thread and something will happen
