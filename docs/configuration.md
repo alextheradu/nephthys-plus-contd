@@ -66,6 +66,10 @@ You can configure which models are used for different AI tasks.
 
 When a question has images, PDFs or text files attached, they are sent to `AI_TITLE_MODEL` along with the message when it writes the ticket title, so that model must accept file input. All of them are sent: images up to 5 MB each, PDFs up to 10 MB each and text files, up to 20 MB in total per message. Other file types are ignored. Category tagging and FAQ matching only see the message text. Files are downloaded with `SLACK_USER_TOKEN`, which needs the `files:read` user scope. As with other AI features, the files are sent to your AI provider, so it must not train on your prompts.
 
+### Identity verification (IDV) and FAQ matching
+
+When picking an FAQ entry, the bot looks up the asker on Flaron (`FLARON_URL`, default `https://flaron.halceon.dev`). If they haven't been identity verified, the model is told that and nothing else: the Flaron data itself is never sent to it. If the lookup fails or the status is unclear, matching just proceeds without the hint.
+
 ### "BETA ask ai" button
 
 New tickets from users with more than `AI_HELP_MIN_TICKETS` past tickets get a **BETA ask ai** button. Clicking it makes the bot search public Slack messages, channel bookmarks, canvases and web pages, then reply in the thread with a cited answer (searching and reading bookmarks, canvases and files uses `SLACK_USER_TOKEN`, which needs the `search:read`, `bookmarks:read`, `files:read`, `channels:read` and `users:read` user scopes) and a "may be inaccurate" disclaimer. Helpers still follow up as normal.

@@ -208,11 +208,14 @@ def faq_section_url(entry: FaqEntry) -> str:
     return f"{env.transcript.faq_link}?focus_section_id={entry.section_id}"
 
 
-async def find_faq_entry(text: str) -> FaqEntry | None:
+async def find_faq_entry(
+    text: str, not_identity_verified: bool = False
+) -> FaqEntry | None:
     """Ask the AI which FAQ entry (if any) answers the given message.
 
     The model only picks from the transcript's FAQ entries, so it can't make up
-    an answer. Returns None if nothing matches confidently enough."""
+    an answer. `not_identity_verified` tells it the sender hasn't been identity
+    verified. Returns None if nothing matches confidently enough."""
     entries = faq_entries
     if not entries or not ai_client or not text.strip():
         return None
@@ -225,15 +228,24 @@ async def find_faq_entry(text: str) -> FaqEntry | None:
         "or the message is about a personal/account-specific issue that needs a human."
     )
 
+    state: dict = {"message": {"message_content": text}}
+    instructions = f"A participant in {env.transcript.program_name} sent this support message. Which FAQ entry directly answers their question?"
+    if not_identity_verified:
+        state["user"] = {"identity_verified": False}
+        instructions += (
+            " The sender has not been identity verified; take that into account "
+            "where the right answer depends on it."
+        )
+
     model = env.ai_faq_model
     try:
         response = await decisions(
             model=model,
-            state={"message": {"message_content": text}},
+            state=state,
             questions={
                 "faq": {
                     "type": "choice",
-                    "instructions": f"A participant in {env.transcript.program_name} sent this support message. Which FAQ entry directly answers their question?",
+                    "instructions": instructions,
                     "criteria": criteria,
                 }
             },

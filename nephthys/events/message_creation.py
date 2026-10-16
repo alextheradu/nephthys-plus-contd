@@ -29,6 +29,7 @@ from nephthys.utils.env import env
 from nephthys.utils.faq import faq_link_label
 from nephthys.utils.faq import faq_section_url
 from nephthys.utils.faq import find_faq_entry
+from nephthys.utils.flaron import is_not_identity_verified
 from nephthys.utils.performance import perf_timer
 from nephthys.utils.promote import maybe_promote
 from nephthys.utils.slack_user import get_user_profile
@@ -289,8 +290,11 @@ async def handle_new_question(
         await delete_and_clean_up_ticket(ticket)
         return
 
+    async with perf_timer("IDV status lookup"):
+        not_verified = await is_not_identity_verified(author_id)
+
     async with perf_timer("AI FAQ matching", FAQ_MATCH_DURATION):
-        faq_entry = await find_faq_entry(text)
+        faq_entry = await find_faq_entry(text, not_identity_verified=not_verified)
 
     if faq_entry:
         try:
