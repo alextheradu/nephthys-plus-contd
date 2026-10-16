@@ -49,7 +49,7 @@ Helpers and admins can add, edit, and delete custom program macros from the **Ma
 
 ### Leaderboard
 
-At midnight UK time each day, you get to see the stats for the day in the team channel, as well as a summary of any old tickets that have been waiting for a helper response for over 5 days.
+At midnight UK time each day, you get to see the stats for the day in the team channel, as well as a summary of open tickets that are over 10 days old or haven't had a message in 3 days.
 
 Helpers can see more detailed stats at any time on the app home for the bot!
 

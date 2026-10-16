@@ -128,9 +128,12 @@ async def send_daily_stats():
             await Ticket.objects()
             .where(
                 (Ticket.status != TicketStatus.CLOSED)
-                & (Ticket.last_msg_at < today_midnight_london - timedelta(days=5))
+                & (
+                    (Ticket.created_at < today_midnight_london - timedelta(days=10))
+                    | (Ticket.last_msg_at < today_midnight_london - timedelta(days=3))
+                )
             )
-            .order_by(Ticket.last_msg_at)
+            .order_by(Ticket.created_at)
         )
 
         pie_chart = await generate_ticket_status_pie_image(
