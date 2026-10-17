@@ -72,7 +72,7 @@ When picking an FAQ entry, the bot looks up the asker on Flaron (`FLARON_URL`, d
 
 ### Wait time estimate
 
-The welcome message in a new question's thread ends with a line like "typical wait right now: about 25 minutes". It's the median time to a first helper reply over the last 7 days. Tickets still waiting count up to now, and tickets closed without a helper reply are ignored. Nothing is shown until there are at least 5 tickets in that window. Edit or empty the transcript's `wait_time_estimate` to change or remove it.
+The welcome message in a new question's thread ends with a line like "typical wait right now: about 25 minutes". It's the average time to a first reply (from anyone but the poster) over the last 7 days, without the fastest and slowest 7%. Tickets still waiting count up to now, and tickets closed without a reply are ignored. Nothing is shown until there are at least 5 tickets in that window. Edit or empty the transcript's `wait_time_estimate` to change or remove it.
 
 ### "BETA ask ai" button
 

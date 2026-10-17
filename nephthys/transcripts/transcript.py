@@ -77,7 +77,7 @@ class Transcript(BaseModel):
 
     wait_time_estimate: str = Field(
         default="_typical wait right now: about {wait}_",
-        description="Small line under the welcome message. {wait} is replaced with the median time to a first helper reply over the last 7 days. Leave empty to turn it off",
+        description="Small line under the welcome message. {wait} is replaced with the average time to a first reply (from anyone but the poster) over the last 7 days, without the fastest and slowest 7%. Leave empty to turn it off",
     )
 
     resolve_ticket_button: str = Field(

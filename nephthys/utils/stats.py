@@ -4,7 +4,6 @@ from datetime import datetime
 from datetime import timedelta
 from datetime import UTC
 from statistics import fmean
-from statistics import median
 from typing import TypedDict
 
 from nephthys.database.enums import TicketStatus
@@ -94,14 +93,15 @@ WAIT_ESTIMATE_DAYS = 7
 WAIT_ESTIMATE_MIN_TICKETS = 5
 
 
-async def median_wait_minutes(
+async def average_wait_minutes(
     days: int = WAIT_ESTIMATE_DAYS, min_tickets: int = WAIT_ESTIMATE_MIN_TICKETS
 ) -> float | None:
-    """Median minutes someone has waited for a first helper reply, over recent tickets.
+    """Average minutes someone has waited for a first reply from anyone but the poster,
+    over recent tickets, without the fastest and slowest 7%.
 
     Tickets that got a reply count how long they waited. Tickets still waiting
     count up to now, so a growing backlog pushes the estimate up. Tickets closed
-    without any helper reply (e.g. the poster resolved it themselves) didn't wait
+    without any reply (e.g. the poster resolved it themselves) didn't wait
     on anyone, so they're left out. Returns None if there are too few tickets to
     say anything useful.
     """
@@ -111,13 +111,15 @@ async def median_wait_minutes(
     )
     waits: list[float] = []
     for tkt in tickets:
-        if tkt.assigned_at:
-            waits.append((tkt.assigned_at - tkt.created_at).total_seconds() / 60)
+        if tkt.first_reply_at:
+            waits.append((tkt.first_reply_at - tkt.created_at).total_seconds() / 60)
         elif tkt.status != TicketStatus.CLOSED:
             waits.append((now - tkt.created_at).total_seconds() / 60)
     if len(waits) < min_tickets:
         return None
-    return median(waits)
+    waits.sort()
+    trim = int(len(waits) * 0.07)
+    return fmean(waits[trim : len(waits) - trim])
 
 
 def format_wait(minutes: float) -> str:

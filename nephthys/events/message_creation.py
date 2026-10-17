@@ -1,5 +1,6 @@
 import logging
 from datetime import datetime
+from datetime import UTC
 from typing import Any
 
 from httpx import HTTPStatusError
@@ -34,8 +35,8 @@ from nephthys.utils.flaron import is_not_identity_verified
 from nephthys.utils.performance import perf_timer
 from nephthys.utils.promote import maybe_promote
 from nephthys.utils.slack_user import get_user_profile
+from nephthys.utils.stats import average_wait_minutes
 from nephthys.utils.stats import format_wait
-from nephthys.utils.stats import median_wait_minutes
 from nephthys.utils.ticket_methods import delete_and_clean_up_ticket
 from nephthys.utils.ticket_methods import reply_to_ticket
 from nephthys.utils.ticket_methods import ThreadGoneError
@@ -127,6 +128,16 @@ async def handle_message_in_thread(event: dict[str, Any], db_user: User | None):
         }
     ).where(Ticket.msg_ts == event["thread_ts"])
 
+    if (
+        not is_author
+        and not event.get("bot_id")
+        and not ticket_message.first_reply_at
+        and ticket_message.status != TicketStatus.CLOSED
+    ):
+        await Ticket.update({Ticket.first_reply_at: datetime.now(UTC)}).where(
+            Ticket.msg_ts == event["thread_ts"]
+        )
+
     # Ensure the ticket is assigned to the helper who last sent a message
     if db_user and db_user.helper and ticket_message.status != TicketStatus.CLOSED:
         logging.info(
@@ -212,14 +223,14 @@ async def handle_new_question(
     wait_estimate = None
     if env.transcript.wait_time_estimate:
         try:
-            async with perf_timer("Calculating median wait time"):
-                median_wait = await median_wait_minutes()
-            if median_wait is not None:
+            async with perf_timer("Calculating average wait time"):
+                average_wait = await average_wait_minutes()
+            if average_wait is not None:
                 wait_estimate = env.transcript.wait_time_estimate.replace(
-                    "{wait}", format_wait(median_wait)
+                    "{wait}", format_wait(average_wait)
                 )
         except Exception:
-            logging.error("Failed to calculate the median wait time", exc_info=True)
+            logging.error("Failed to calculate the average wait time", exc_info=True)
 
     try:
         async with perf_timer("Sending user-facing FAQ message"):
