@@ -100,6 +100,19 @@ async def handle_message_in_thread(event: dict[str, Any], db_user: User | None):
     text: str = event.get("text", "")
     first_word = text.split()[0].lower() if text.strip() else ""
 
+    is_author = bool(
+        ticket_message.opened_by and event["user"] == ticket_message.opened_by.slack_id
+    )
+    if (
+        not is_author
+        and not event.get("bot_id")
+        and not ticket_message.first_reply_at
+        and ticket_message.status != TicketStatus.CLOSED
+    ):
+        await Ticket.update({Ticket.first_reply_at: datetime.now(UTC)}).where(
+            Ticket.msg_ts == event["thread_ts"]
+        )
+
     if db_user and db_user.helper and first_word.startswith("?"):
         await run_macro(
             name=first_word.lstrip("?"),
@@ -111,9 +124,6 @@ async def handle_message_in_thread(event: dict[str, Any], db_user: User | None):
         return
 
     # Update lastMsg fields in DB
-    is_author = bool(
-        ticket_message.opened_by and event["user"] == ticket_message.opened_by.slack_id
-    )
     is_helper = bool(db_user and db_user.helper)
     await Ticket.update(
         {
@@ -127,16 +137,6 @@ async def handle_message_in_thread(event: dict[str, Any], db_user: User | None):
             ),
         }
     ).where(Ticket.msg_ts == event["thread_ts"])
-
-    if (
-        not is_author
-        and not event.get("bot_id")
-        and not ticket_message.first_reply_at
-        and ticket_message.status != TicketStatus.CLOSED
-    ):
-        await Ticket.update({Ticket.first_reply_at: datetime.now(UTC)}).where(
-            Ticket.msg_ts == event["thread_ts"]
-        )
 
     # Ensure the ticket is assigned to the helper who last sent a message
     if db_user and db_user.helper and ticket_message.status != TicketStatus.CLOSED:
