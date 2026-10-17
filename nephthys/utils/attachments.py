@@ -47,8 +47,13 @@ async def _download(file: dict[str, Any], limit: int) -> bytes | None:
                 f"Couldn't download attachment file_id={file.get('id')}: status={res.status} type={res.content_type}"
             )
             return None
-        data = await res.content.read(limit + 1)
-    return data if len(data) <= limit else None
+        # read() only returns what's buffered, so it would truncate the file
+        data = b""
+        async for chunk in res.content.iter_chunked(64 * 1024):
+            data += chunk
+            if len(data) > limit:
+                return None
+    return data
 
 
 async def attachment_parts(files: list[dict[str, Any]]) -> list[dict[str, Any]]:
