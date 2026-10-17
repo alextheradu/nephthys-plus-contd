@@ -46,6 +46,8 @@ class FaqMatch(NamedTuple):
 faq_entries: list[FaqEntry] = []
 # Only send a heartbeat for the first of several failures in a row
 _last_refresh_failed = False
+_events_entry_missing = False
+MIN_EVENTS = 3
 
 
 _EMOJI = re.compile(r":[a-z0-9_+\-]+:")
@@ -213,6 +215,14 @@ async def refresh_faq_entries() -> None:
         return
     _last_refresh_failed = False
     faq_entries = entries
+    global _events_entry_missing
+    missing = bool(env.transcript.faq_events_question) and events_entry() is None
+    if missing and not _events_entry_missing:
+        logging.warning(
+            f"No FAQ entry matches faq_events_question={env.transcript.faq_events_question!r} "
+            f"and none looks like an event list, headings={[e.question for e in entries]}"
+        )
+    _events_entry_missing = missing
     logging.info(f"Loaded {len(entries)} FAQ entries from canvas {canvas_id}")
 
 
@@ -245,12 +255,29 @@ def parse_event_channels(answer: str) -> list[EventChannel]:
     return list(events.values())
 
 
+def events_entry() -> FaqEntry | None:
+    question = env.transcript.faq_events_question
+    if not question:
+        return None
+    prefix = question.lower()
+    entry = next(
+        (e for e in faq_entries if e.question.lower().startswith(prefix)), None
+    )
+    if entry:
+        return entry
+    best = max(
+        faq_entries, key=lambda e: len(parse_event_channels(e.answer)), default=None
+    )
+    if best and len(parse_event_channels(best.answer)) >= MIN_EVENTS:
+        return best
+    return None
+
+
 def event_channels() -> list[EventChannel]:
     """The events listed in this program's FAQ canvas, or none if the program
     doesn't have such a list (the transcript's `faq_events_question`)."""
-    question = env.transcript.faq_events_question
-    entry = next((e for e in faq_entries if e.question == question), None)
-    return parse_event_channels(entry.answer) if question and entry else []
+    entry = events_entry()
+    return parse_event_channels(entry.answer) if entry else []
 
 
 def event_suggestion(event: EventChannel) -> str:
@@ -374,8 +401,6 @@ async def match_faq(text: str, not_identity_verified: bool = False) -> FaqMatch:
         if events
         else None
     )
-    if event and (
-        entry is None or entry.question == env.transcript.faq_events_question
-    ):
+    if event and (entry is None or entry is events_entry()):
         return FaqMatch(event=event)
     return FaqMatch(entry=entry)
