@@ -3,6 +3,8 @@ import ipaddress
 import json
 import logging
 import re
+from datetime import datetime
+from datetime import UTC
 from typing import Any
 from typing import cast
 from urllib.parse import urljoin
@@ -16,16 +18,16 @@ from openai.types.chat import ChatCompletionToolParam
 from slack_sdk.errors import SlackApiError
 from slack_sdk.web.async_client import AsyncWebClient
 
+from nephthys.utils import faq
 from nephthys.utils.ai import ai_client
 from nephthys.utils.ai import provider_routing
 from nephthys.utils.env import env
 
 WORKSPACE_URL = "https://hackclub.slack.com"
 MAX_TOOL_ROUNDS = 8
-MAX_OUTPUT_TOKENS = 4000
+MAX_OUTPUT_TOKENS = 1500
 
 HELP_CHANNELS = """\
-General Hack Club questions / not sure where to ask: <#C07TM4C0AQ5>
 Identity (ID verification, Hack Club Auth): <#C092833JXKK>
 YSWS organizing (organizing or drafting events): <#C0A4GF56ZRD>
 Hackatime (tracking coding time): <#C0AFG0XGGMP> (for fraud see Fraud Department)
@@ -40,23 +42,27 @@ Fire Department (moderation): to report content message {{U07K4TS9HQE|fire depar
 Hack Club Minecraft server: <#CD1JSG9UK> (moderation concerns: ping the @minecraft-admins group)
 Code related questions: <#C0EA9S0A0>
 Hack Club Spaces (online IDE): <#C08D0UDBSLX>
-Fraud Department (investigates Hackatime activity): if your account was flagged see https://fraud.land and message {{U091HC53CE8|fraud squad}}
-YSWS / event help channels:
-Resolution <#C0A80KVN6MA>, Sleepover <#C0A9UNRF96V>, Enclosure <#C0AQR65RE02>, Trailit <#C0AGG8J6PLL>, Fallout <#C0ACJ290090>, Remixed <#C0AK7L0B9A6>, Hackcraft <#C07NQ5QAYNQ>, Stasis <#C09JP51FHNE>, Coeur <#C0A6MCHFFEU>, Boot <#C09EWDU9ZQT>, Hack Club: The Game <#C0A9XULS1SL>, Boba Drops <#C06UJR8QW0M>, Horizons <#C0AFLAUT58A>, Sprig <#C02UN35M7LG>, Construct <#C09QSTUV88Y>, Flavortown <#C09MATKQM8C>, Campfire Flagship <#C0A6KLGRZQE>, Stardance Challenge <#C0AP0NMSP3P>, Alchemize <#C0ASVK0HHEX>"""
+Fraud Department (investigates Hackatime activity): if your account was flagged see https://fraud.land and message {{U091HC53CE8|fraud squad}}"""
 
-SYSTEM_PROMPT = """You are a friendly, concise assistant answering a question from a Hack Club member in a help-ticket thread.
+SYSTEM_PROMPT = """You are the help bot answering a member's question in a help-ticket thread. A human helper reviews every ticket afterwards, so be genuinely useful but never guess. Today is {TODAY}.
 
-Rules:
-1. Keep the answer short and direct (about 4 sentences max). A little warmth is fine, no fluff.
-2. Search first. Call search_messages (refine the query at least once if results are noisy) before answering. Do NOT answer from general knowledge; base everything on what the tools return.
-3. Cite sources. For messages, name the author and channel and link the message: "as noted by <author> in <channel> (<{permalink}|view message>)". Copy the "author", "channel" and "permalink" fields from the result EXACTLY as given. For bookmarks, canvases and web pages cite the title and exact URL.
-4. If nothing relevant is found, say you couldn't find it and a helper will follow up.
-5. Mention channels ONLY as the proper channel token <#CHANNEL_ID>, copied exactly from the lists or tool results (never the plain channel name, never "#name"). Mention users ONLY as {{USER_ID|name}}, copied exactly as you saw them (never use <@...>).
-6. If a more specific help channel fits the question, end with "Next time, ask in <#CHANNEL_ID>" using the list below. Only suggest channels from this list or from search results.
-7. Never give instructions for fraud, abuse, or anything harmful.
+The question is the message labelled QUESTION. Later messages are follow-ups. The member is already asking in <#{HELP_CHANNEL}>, never tell them to ask there.
+
+How to answer:
+1. Start with the FAQ and help channels below. For identity verification, fraud, money/grants, or anything with its own program or team channel, don't guess the details: say who handles it and point to the channel with <#CHANNEL_ID>. That is often the whole answer.
+2. Otherwise search_messages. Use short keyword queries (2-4 words, not sentences) and try other keywords if the results are weak. Answers usually sit in the replies, so call read_thread on a promising result before relying on it. Trust helper and staff replies and official pages over casual chat, and prefer recent messages (check "date").
+3. Lead with the answer in at most 3 short sentences, addressed to the member. No preamble such as "Based on past answers".
+4. If the question is too vague to answer, ask for the one thing you need (which program, the exact error text, a screenshot) instead of guessing.
+5. If you can't find a reliable answer, say so in one sentence and point to the most relevant channel. Never pad with tangential facts, and never state a rule you didn't see confirmed.
+6. Cite at most 2 sources, only ones that directly support what you say: "(<{permalink}|view message>)", copying "permalink" exactly. Name the author only when who said it matters. For bookmarks, canvases, FAQ and web pages cite the title and exact URL.
+7. Mention channels ONLY as the proper channel token <#CHANNEL_ID>, copied exactly from the lists or tool results (never the plain name, never "#name"). Mention users ONLY as {{USER_ID|name}}, copied exactly as you saw them (never <@...>).
+8. Never give instructions for fraud, abuse, or anything harmful.
 
 Help channels:
 {HELP_CHANNELS}
+
+FAQ:
+{FAQ}
 
 Helper macros (canned replies helpers send; these are configured for THIS program only, and some like ?shipwrights apply only to programs with project shipping or certification, so only reference a macro when it fits the question):
 {MACROS}
@@ -67,11 +73,26 @@ TOOLS: list[ChatCompletionToolParam] = [
         "type": "function",
         "function": {
             "name": "search_messages",
-            "description": "Search public Slack channels and threads by relevance. Supports operators like in:#channel, from:@handle, has:link, before:/after:YYYY-MM-DD.",
+            "description": "Keyword search over public Slack messages, by relevance. Use 2-4 keywords, not a sentence. Each result has a date, the channel_id and thread_ts to pass to read_thread. Supports operators like in:#channel, from:@handle, has:link, before:/after:YYYY-MM-DD.",
             "parameters": {
                 "type": "object",
                 "properties": {"query": {"type": "string"}},
                 "required": ["query"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "read_thread",
+            "description": "Read the replies in a public channel thread. Search results only show one message; the answer is usually in the replies.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "channel_id": {"type": "string"},
+                    "thread_ts": {"type": "string"},
+                },
+                "required": ["channel_id", "thread_ts"],
             },
         },
     },
@@ -113,8 +134,13 @@ TOOLS: list[ChatCompletionToolParam] = [
     },
 ]
 
+FAQ_CHANNEL = re.compile(r"#(C[A-Z0-9]{8,})")
 USER_TOKEN = r"\{\{([UW][A-Z0-9]{8,11})(?:\|([^}]*))?\}\}"
 _user_cache: dict[str, tuple[str, bool]] = {}
+
+
+def _date(ts: str | None) -> str | None:
+    return datetime.fromtimestamp(float(ts), UTC).strftime("%Y-%m-%d") if ts else None
 
 
 def _strip_html(raw: str, limit: int) -> str:
@@ -163,6 +189,8 @@ class _Run:
                 return {"content": await _fetch_text(args["url"])}
             if name == "search_messages":
                 return await self.search_messages(args["query"])
+            if name == "read_thread":
+                return await self.read_thread(args["channel_id"], args["thread_ts"])
             if name == "list_channel_bookmarks":
                 res = await self.user_client.bookmarks_list(
                     channel_id=args["channel_id"]
@@ -215,15 +243,39 @@ class _Run:
                 if m.get("user")
                 else m.get("username", "unknown")
             )
+            thread_ts = re.search(r"thread_ts=([\d.]+)", m.get("permalink") or "")
             results.append(
                 {
                     "author": author,
                     "channel": f"<#{ch['id']}>",
+                    "channel_id": ch["id"],
+                    "thread_ts": thread_ts[1] if thread_ts else m.get("ts"),
+                    "date": _date(m.get("ts")),
                     "text": (m.get("text") or "")[:700],
                     "permalink": m.get("permalink"),
                 }
             )
         return results or {"info": "No public messages found for that query."}
+
+    async def read_thread(self, channel_id: str, thread_ts: str) -> Any:
+        info = (await self.user_client.conversations_info(channel=channel_id)).get(
+            "channel"
+        ) or {}
+        if not info.get("is_channel") or info.get("is_private"):
+            return {"error": "that channel is not public"}
+        self.channels[info.get("name", channel_id)] = channel_id
+        res = await self.user_client.conversations_replies(
+            channel=channel_id, ts=thread_ts, limit=25
+        )
+        return [
+            {
+                "author": (f"{{{{{m['user']}|user}}}}" if m.get("user") else "unknown"),
+                "date": _date(m.get("ts")),
+                "text": (m.get("text") or "")[:600],
+                "permalink": f"{WORKSPACE_URL}/archives/{channel_id}/p{m['ts'].replace('.', '')}?thread_ts={thread_ts}",
+            }
+            for m in res.get("messages", [])
+        ]
 
     async def render(self, text: str) -> str:
         text = re.sub(r"\*\*(.+?)\*\*", r"*\1*", text)
@@ -282,6 +334,23 @@ class _Run:
             logging.warning(f"AI help couldn't look up user {uid}: {e!r}")
 
 
+def help_channels() -> str:
+    events = ", ".join(f"{e.name} <#{e.channel_id}>" for e in faq.event_channels())
+    if not events:
+        return HELP_CHANNELS
+    return f"{HELP_CHANNELS}\nProgram / event help channels: {events}"
+
+
+def faq_knowledge() -> str:
+    events = faq.events_entry()
+    entries = []
+    for e in faq.faq_entries:
+        if e is not events:
+            answer = FAQ_CHANNEL.sub(r"<#\1>", e.answer)
+            entries.append(f"Q: {e.question}\nA: {answer}\n({faq.faq_section_url(e)})")
+    return "\n\n".join(entries)[:12000] or "(none)"
+
+
 async def macro_knowledge() -> str:
     from nephthys.database.tables import Macro as MacroTable
     from nephthys.macros import macros
@@ -313,9 +382,9 @@ async def answer(channel: str, thread_ts: str) -> str:
     replies = await env.slack_client.conversations_replies(
         channel=channel, ts=thread_ts
     )
-    thread = "\n".join(
-        f"{'<@' + m['user'] + '>' if m.get('user') else 'Bot'}: {m.get('text', '')}"
-        for m in replies.get("messages", [])
+    thread = "\n\n".join(
+        f"[{'QUESTION' if i == 0 else 'REPLY'} from {'<@' + m['user'] + '>' if m.get('user') else 'Bot'}]\n{m.get('text', '')}"
+        for i, m in enumerate(replies.get("messages", []))
     )
     run = _Run()
     thread = await run.tokenize_mentions(thread)
@@ -323,13 +392,17 @@ async def answer(channel: str, thread_ts: str) -> str:
     messages: list[ChatCompletionMessageParam] = [
         {
             "role": "system",
-            "content": SYSTEM_PROMPT.replace("{HELP_CHANNELS}", HELP_CHANNELS).replace(
-                "{MACROS}", await macro_knowledge()
-            ),
+            "content": SYSTEM_PROMPT.replace(
+                "{TODAY}", datetime.now(UTC).strftime("%Y-%m-%d")
+            )
+            .replace("{HELP_CHANNEL}", env.slack_help_channel)
+            .replace("{HELP_CHANNELS}", help_channels())
+            .replace("{FAQ}", faq_knowledge())
+            .replace("{MACROS}", await macro_knowledge()),
         },
         {
             "role": "user",
-            "content": f"Ticket thread (the question is the first message):\n{thread}\n\nAnswer the question.",
+            "content": f"Ticket thread:\n\n{thread}\n\nAnswer the question.",
         },
     ]
     model = env.ai_help_model
