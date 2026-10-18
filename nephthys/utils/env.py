@@ -181,25 +181,30 @@ class Environment:
         if unset:
             raise ValueError(f"Missing environment variables: {', '.join(unset)}")
 
-        transcript_instances = [program() for program in transcripts]
-        valid_programs = [
-            program.program_snake_case for program in transcript_instances
-        ]
-        if self.program not in valid_programs:
-            raise ValueError(
-                f"Invalid PROGRAM environment variable: {self.program}. "
-                f"Must be one of {valid_programs}"
-            )
-
         self.session: ClientSession
-        self.transcript = next(
+        matching_transcript = next(
             (
-                program
-                for program in transcript_instances
-                if program.program_snake_case == self.program
+                inst
+                for program_cls in transcripts
+                if (inst := program_cls()).program_snake_case
+                == self.program.lower().replace(" ", "_")
             ),
-            Transcript(),
+            None,
         )
+
+        if matching_transcript:
+            self.transcript = matching_transcript
+        else:
+            transcript_kwargs = {
+                "program_name": self.program,
+                "help_channel": self.slack_help_channel,
+                "ticket_channel": self.slack_ticket_channel,
+                "team_channel": self.slack_bts_channel,
+                "program_owner": self.slack_maintainer_id,
+            }
+            if os.environ.get("FAQ_LINK"):
+                transcript_kwargs["faq_link"] = os.environ["FAQ_LINK"]
+            self.transcript = Transcript(**transcript_kwargs)
 
         self.slack_client = AsyncWebClient(token=self.slack_bot_token)
 
