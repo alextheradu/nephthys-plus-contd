@@ -6,6 +6,7 @@ from nephthys.transcripts.transcripts.alchemize import Alchemize
 from nephthys.transcripts.transcripts.atlantis import Atlantis
 from nephthys.transcripts.transcripts.beest import Beest
 from nephthys.transcripts.transcripts.capitol import Capitol
+from nephthys.transcripts.transcripts.contd import Contd
 from nephthys.transcripts.transcripts.construct import Construct
 from nephthys.transcripts.transcripts.fallout import Fallout
 from nephthys.transcripts.transcripts.flavortown import Flavortown
@@ -29,6 +30,7 @@ transcripts: List[Type[Transcript]] = [
     Identity,
     SummerOfMaking,
     Flavortown,
+    Contd,
     Midnight,
     Construct,
     Jumpstart,
