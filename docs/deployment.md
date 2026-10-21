@@ -72,6 +72,10 @@ Note: These steps have to be done by a Workspace Admin (otherwise it will be una
    BASE_URL="https://summer.nephthys.hackclub.com"
    ```
 
+   `DATABASE_URL` must include the `postgresql://` (or `postgres://`) scheme.
+   When entering it in Coolify, provide the URL value itself rather than the
+   surrounding quotes shown in this example.
+
 3. There's some optional environment variables that are recommended to set:
 
    ```bash

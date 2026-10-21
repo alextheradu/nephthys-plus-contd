@@ -18,7 +18,7 @@ from nephthys.transcripts.transcript import Transcript
 STATIC_DIR = Path(Path.cwd() / "nephthys" / "public")
 TEMPLATES_DIR = Path(Path.cwd() / "nephthys" / "templates")
 
-load_dotenv(override=True)
+load_dotenv()
 
 
 @overload
