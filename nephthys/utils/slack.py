@@ -61,20 +61,20 @@ async def delete_bot_message_shortcut(
 
     user_id = body["user"]["id"]
     user = await User.objects().where(User.slack_id == user_id).first()
-    if not user or not (user.helper or user.admin):
-        await client.chat_postEphemeral(
-            channel=body["channel"]["id"],
-            user=user_id,
-            text="Only helpers and admins can delete messages with this shortcut.",
-        )
-        return
-
     message = body.get("message", {})
     bot_user_id = (await client.auth_test())["user_id"]
     is_bot_message = message.get("user") == bot_user_id or (
         message.get("bot_id") and not message.get("user")
     )
     is_own_message = message.get("user") == user_id
+    if not is_own_message and (not user or not (user.helper or user.admin)):
+        await client.chat_postEphemeral(
+            channel=body["channel"]["id"],
+            user=user_id,
+            text="Only helpers and admins can delete messages sent by me.",
+        )
+        return
+
     if not is_bot_message and not is_own_message:
         await client.chat_postEphemeral(
             channel=body["channel"]["id"],

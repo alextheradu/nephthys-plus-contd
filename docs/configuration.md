@@ -16,7 +16,7 @@ These should always be configured.
 | -------- | --------- | ----------- | ------- |
 | `ENVIRONMENT` | Required | Set to `production` for production or staging deployments | `development` |
 | `PORT` | Optional | HTTP server port | `3000` |
-| `SLACK_USER_TOKEN` | Required | Slack bot user token | _N/A_ |
+| `SLACK_USER_TOKEN` | Required | Slack user token for the helper account; allows that helper's macro commands and own messages to be deleted without workspace-admin access | _N/A_ |
 | `SLACK_BOT_TOKEN` | Required | Slack bot bot token | _N/A_ |
 | `SLACK_SIGNING_SECRET` | Required | Slack bot signing secret | _N/A_ |
 | `SLACK_MAINTAINER_ID` | Required | Slack user ID to ping on certain exceptions | _N/A_ |
