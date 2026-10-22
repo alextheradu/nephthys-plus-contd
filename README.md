@@ -45,12 +45,11 @@ Sometimes it’s nice to be able to do things quickly... Here’s where macros c
 
 Program-specific macros can be added from the App Home (see below) without touching code.
 
-Helpers and admins can use Slack's message shortcut menu on their own messages or
-on a message sent by helper heidi. Bot messages are deleted directly with the bot
-token and do not require workspace-admin access or Prometheus. To delete a
-helper's macro command automatically, set `SLACK_USER_TOKEN` to a token belonging
-to that same helper. Other helpers' macro commands require Prometheus or their
-own linked Slack user tokens.
+The Slack user configured in `SLACK_USER_TOKEN` can use Slack's message shortcut
+menu on their own messages. Helpers and admins can also use it on a message sent
+by helper heidi. Bot messages are deleted directly with the bot token and do not
+require workspace-admin access or Prometheus. The user token must belong to the
+same Slack user whose messages are being deleted.
 
 #### Custom Program Macros
 
