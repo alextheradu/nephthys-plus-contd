@@ -138,7 +138,7 @@ class Transcript(BaseModel):
     def set_default_messages(self):
         """Set default values for messages that reference other fields"""
         if not self.first_ticket_create:
-            self.first_ticket_create = f"""oh, hey (user) it looks like this is your first time here, welcome! someone should be along to help you soon but in the mean time i suggest you read the faq <{self.faq_link}|here>, it answers a lot of common questions.
+            self.first_ticket_create = f"""hey (user)! it looks like this is your first time here in the {self.help_channel} channel, welcome! someone should be along to help you soon but in the mean time i suggest you read the faq <{self.faq_link}|here>, it answers a lot of common questions.
 if your question has been answered, please hit the button below to mark it as resolved
     """
 
@@ -147,7 +147,7 @@ if your question has been answered, please hit the button below to mark it as re
     """
 
         if not self.ticket_resolve:
-            self.ticket_resolve = f"""oh, oh! it looks like this post has been marked as resolved by <@{{user_id}}>! if you have any more questions, please make a new post in <#{self.help_channel}> and someone'll be happy to help you out! not me though, i'm just a silly racoon ^-^
+            self.ticket_resolve = f"""this post has been marked as resolved by <@{{user_id}}>! if you have any more questions, please make a new post in <#{self.help_channel}> and someone'll be happy to help you out!
     """
 
         if not self.ticket_resolve_stale:

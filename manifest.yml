@@ -1,64 +1,86 @@
 {
     "display_information": {
-        "name": "helper heidi",
-        "description": "making support teams run smoothly (and my partner proud)",
-        "background_color": "#c47600"
+        "name": "chu.d",
+        "description": "cont.d help & updates dispatcher",
+        "long_description": "this is such a tuff name for a bot, i know. it helps around with the help channel and dms ppl when their projects get reviewed, rejected, or require changes. also dms for fulfillment and other purposes!",
+        "background_color": "#141414"
     },
     "features": {
         "app_home": {
             "home_tab_enabled": true,
             "messages_tab_enabled": true,
-            "messages_tab_read_only_enabled": true
+            "messages_tab_read_only_enabled": false,
+            "agent_tasks_enabled": true
         },
         "bot_user": {
-            "display_name": "helper heidi",
-            "always_online": false
-        }
+            "display_name": "cont.d",
+            "always_online": true
+        },
+        "shortcuts": [
+            {
+                "name": "Delete message",
+                "type": "message",
+                "callback_id": "delete_bot_message",
+                "description": "Delete your own message or a message sent by cont.d"
+            }
+        ]
     },
     "oauth_config": {
         "scopes": {
             "user": [
-                "bookmarks:read",
-                "chat:write",
-                "files:read",
-                "search:read"
+                "chat:write"
             ],
-          "bot": [
+            "bot": [
                 "channels:history",
-                "metadata.message:read",
                 "channels:read",
+                "channels:manage",
                 "chat:write",
                 "chat:write.customize",
                 "chat:write.public",
                 "groups:history",
                 "groups:read",
                 "groups:write",
+                "im:history",
+                "im:read",
+                "im:write",
+                "metadata.message:read",
                 "reactions:read",
                 "reactions:write",
                 "users:read",
-                "files:write"
+                "files:write",
+                "mpim:read"
             ]
-        }
+        },
+        "pkce_enabled": false
     },
     "settings": {
         "event_subscriptions": {
-            "request_url": "https://nephthys.hackclub.com/slack/events",
             "bot_events": [
                 "app_home_opened",
                 "member_joined_channel",
                 "member_left_channel",
                 "message.channels",
                 "message.groups",
+                "message.im",
                 "message_metadata_posted"
+            ],
+            "request_url": "https://contd-bot.k.hackclub.dev/slack/events",
+            "metadata_subscriptions": [
+                {
+                    "app_id": "*",
+                    "event_type": "nephthys_plus_forward"
+                }
             ]
         },
         "interactivity": {
             "is_enabled": true,
-            "request_url": "https://nephthys.hackclub.com/slack/events",
-            "message_menu_options_url": "https://nephthys.hackclub.com/slack/events"
+            "message_menu_options_url": "https://contd-bot.k.hackclub.dev/slack/events",
+            "request_url": "https://contd-bot.k.hackclub.dev/slack/events"
         },
         "org_deploy_enabled": false,
         "socket_mode_enabled": false,
-        "token_rotation_enabled": false
+        "is_mcp_enabled": false,
+        "token_rotation_enabled": false,
+        "app_level_token_rotation_enabled": false
     }
 }
