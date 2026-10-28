@@ -1,6 +1,8 @@
 import logging
 from typing import Any
 
+from slack_sdk.errors import SlackApiError
+
 from nephthys.database.enums import TicketStatus
 from nephthys.database.tables import Macro as MacroTable
 from nephthys.database.tables import Ticket
@@ -91,11 +93,29 @@ async def run_macro(
         new_kwargs = kwargs.copy()
         new_kwargs["text"] = text
         await target_macro.run(ticket, helper, **new_kwargs)
-        await prometheus.delete_message(
+        deleted = await prometheus.delete_message(
             ts=macro_ts,
             channel=env.slack_help_channel,
             reason=f"?{name} macro trigger",
         )
+        if not deleted and env.slack_user_token and env.slack_user_token != "unset":
+            try:
+                linked_user = await env.slack_client.auth_test(
+                    token=env.slack_user_token
+                )
+                if linked_user.get("user_id") == helper.slack_id:
+                    await env.slack_client.chat_delete(
+                        channel=env.slack_help_channel,
+                        ts=macro_ts,
+                        token=env.slack_user_token,
+                    )
+            except SlackApiError:
+                logging.exception(
+                    "Failed to delete macro trigger with linked Slack user token "
+                    "macro_ts=%s helper_id=%s",
+                    macro_ts,
+                    helper.slack_id,
+                )
         return True
 
     await error_msg(f"`?{name}` is not a valid macro.")

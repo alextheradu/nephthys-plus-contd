@@ -11,6 +11,7 @@ from blockkit import Section
 from blockkit import StaticSelect
 from slack_bolt.async_app import AsyncApp
 from slack_bolt.context.ack.async_ack import AsyncAck
+from slack_sdk.errors import SlackApiError
 from slack_sdk.web.async_client import AsyncWebClient
 
 from nephthys.actions.ask_ai import ask_ai
@@ -49,6 +50,84 @@ from nephthys.utils.performance import perf_timer
 from nephthys.views.home import AppHomeView
 
 app = AsyncApp(token=env.slack_bot_token, signing_secret=env.slack_signing_secret)
+
+
+@app.shortcut("delete_bot_message")
+async def delete_bot_message_shortcut(
+    ack: AsyncAck, body: Dict[str, Any], client: AsyncWebClient
+):
+    """Delete an authorized user's own or bot-authored message."""
+    await ack()
+
+    user_id = body["user"]["id"]
+    user = await User.objects().where(User.slack_id == user_id).first()
+    message = body.get("message", {})
+    bot_user_id = (await client.auth_test())["user_id"]
+    is_bot_message = message.get("user") == bot_user_id or (
+        message.get("bot_id") and not message.get("user")
+    )
+    is_own_message = message.get("user") == user_id
+    if not is_own_message and (not user or not (user.helper or user.admin)):
+        await client.chat_postEphemeral(
+            channel=body["channel"]["id"],
+            user=user_id,
+            text="Only helpers and admins can delete messages sent by me.",
+        )
+        return
+
+    if not is_bot_message and not is_own_message:
+        await client.chat_postEphemeral(
+            channel=body["channel"]["id"],
+            user=user_id,
+            text="You can only delete your own messages or messages sent by me.",
+        )
+        return
+
+    deletion_token = env.slack_bot_token
+    if is_own_message:
+        if not env.slack_user_token or env.slack_user_token == "unset":
+            await client.chat_postEphemeral(
+                channel=body["channel"]["id"],
+                user=user_id,
+                text="Link your Slack account with SLACK_USER_TOKEN to delete your messages.",
+            )
+            return
+        linked_user = await client.auth_test(token=env.slack_user_token)
+        if linked_user.get("user_id") != user_id:
+            await client.chat_postEphemeral(
+                channel=body["channel"]["id"],
+                user=user_id,
+                text="SLACK_USER_TOKEN is not linked to your Slack account.",
+            )
+            return
+        deletion_token = env.slack_user_token
+
+    try:
+        await client.chat_delete(
+            channel=body["channel"]["id"],
+            ts=message["ts"],
+            token=deletion_token,
+        )
+    except SlackApiError as error:
+        logging.error(
+            "Failed to delete Slack message ts=%s channel=%s: %s",
+            message["ts"],
+            body["channel"]["id"],
+            error,
+        )
+        deleted = False
+    else:
+        deleted = True
+
+    await client.chat_postEphemeral(
+        channel=body["channel"]["id"],
+        user=user_id,
+        text=(
+            "Deleted the message."
+            if deleted
+            else "I couldn't delete that message. Please check the bot's permissions."
+        ),
+    )
 
 
 @app.event("message")
