@@ -1,8 +1,12 @@
+import asyncio
 import logging
+import math
 import traceback
 from dataclasses import dataclass
+from dataclasses import field
 from typing import Any
 
+from aiohttp import ClientError
 from prometheus_client import Histogram
 from slack_sdk.errors import SlackApiError
 from slack_sdk.web.async_client import AsyncWebClient
@@ -24,12 +28,15 @@ from nephthys.views.home.team_tags import get_team_tags_view
 class RequestedView:
     home_type: AppHomeView
     page: int | None = None
+    publish_lock: asyncio.Lock = field(default_factory=asyncio.Lock)
 
 
 DEFAULT_VIEW = AppHomeView.DASHBOARD
 
 
 async def on_app_home_opened(event: dict[str, Any], client: AsyncWebClient):
+    if event.get("tab", "home") != "home":
+        return
     slack_id = event["user"]
     user = await User.objects().get(User.slack_id == slack_id)
     # Restore the the last view the user had open, if any
@@ -68,16 +75,15 @@ async def open_app_home(
     user_id: str,
     page: int | None = None,
 ):
-    last_requested_views[user_id] = RequestedView(home_type, page)
-    loading_view = get_loading_view(home_type)
+    requested = RequestedView(home_type, page)
+    previous = last_requested_views.get(user_id)
+    if previous:
+        requested.publish_lock = previous.publish_lock
+    last_requested_views[user_id] = requested
     try:
-        await client.views_publish(view=loading_view, user_id=user_id)
-    except Exception as e:
-        logging.error(
-            f'Error publishing loading view user_id={user_id} error="{e}" view="{loading_view}"'
-        )
-
-    try:
+        await publish_view(client, user_id, get_loading_view(home_type), requested)
+        if last_requested_views.get(user_id) is not requested:
+            return
         # Generate the view (this is when DB queries are made)
         user = await User.objects().where(User.slack_id == user_id).first()
         logging.info(f"Opening {home_type} for {user_id}")
@@ -101,25 +107,24 @@ async def open_app_home(
                 case AppHomeView.MACROS:
                     view = await get_macros_view(user)
 
-        # Check that the request hasn't been superseded by another request while we were rendering
-        user_last_requested_view = last_requested_views.get(user_id)
-        if user_last_requested_view:
-            if user_last_requested_view != RequestedView(home_type, page):
-                logging.info(
-                    f"Ignoring stale view request slack_id={user_id} view={home_type} page={page}"
-                )
-                return
-            del last_requested_views[user_id]
-
         # Publish the view!
-        await publish_view(client, user_id, view)
+        published = await publish_view(client, user_id, view, requested)
+        if not published and last_requested_views.get(user_id) is requested:
+            await publish_view(
+                client,
+                user_id,
+                get_error_view("Slack could not display this page. Please try again."),
+                requested,
+            )
 
         # Record the user's last-viewed page for future visits
-        if user:
+        if published and user and last_requested_views.get(user_id) is requested:
             user.app_home_last_view = home_type.value
             await user.save()
 
     except Exception as e:
+        if last_requested_views.get(user_id) is not requested:
+            return
         logging.error(f"Error opening app home for <@{user_id}>: {e}", exc_info=True)
         tb = traceback.format_exception(e)
 
@@ -129,17 +134,59 @@ async def open_app_home(
             f"An error occurred while opening the app home: {e}",
             traceback=tb_str,
         )
-        await publish_view(client, user_id, view)
+        await publish_view(client, user_id, view, requested)
+    finally:
+        if last_requested_views.get(user_id) is requested:
+            del last_requested_views[user_id]
 
 
-async def publish_view(client: AsyncWebClient, user_id: str, view: dict[str, Any]):
-    try:
-        await client.views_publish(user_id=user_id, view=view)
-    except SlackApiError as e:
-        logging.error(f"Error publishing app home view: {e}")
-        await client.views_publish(
-            user_id=user_id,
-            view=get_error_view(
-                f"A Slack API error occurred while opening the app home:\n{e}",
-            ),
-        )
+async def publish_view(
+    client: AsyncWebClient,
+    user_id: str,
+    view: dict[str, Any],
+    requested: RequestedView | None = None,
+) -> bool:
+    # Serialize publications for a user, including retries. A newer navigation
+    # request must never be overwritten by an older render or its error screen.
+    lock = requested.publish_lock if requested else asyncio.Lock()
+    async with lock:
+        for attempt in range(3):
+            if requested and last_requested_views.get(user_id) is not requested:
+                return False
+            try:
+                await client.views_publish(user_id=user_id, view=view)
+                return True
+            except SlackApiError as error:
+                code = error.response.get("error")
+                transient = (
+                    code
+                    in {
+                        "internal_error",
+                        "fatal_error",
+                        "service_unavailable",
+                        "request_timeout",
+                        "ratelimited",
+                    }
+                    or error.response.status_code >= 500
+                )
+                if not transient or attempt == 2:
+                    logging.error(
+                        "Could not publish App Home user_id=%s error=%s", user_id, code
+                    )
+                    return False
+                retry_after = error.response.headers.get(
+                    "Retry-After"
+                ) or error.response.headers.get("retry-after")
+                try:
+                    delay = float(retry_after) if retry_after else 0.5 * 2**attempt
+                except (TypeError, ValueError):
+                    delay = 0.5 * 2**attempt
+                if not math.isfinite(delay) or delay < 0:
+                    delay = 0.5 * 2**attempt
+            except (ClientError, TimeoutError):
+                if attempt == 2:
+                    logging.exception("Could not publish App Home user_id=%s", user_id)
+                    return False
+                delay = 0.5 * 2**attempt
+            await asyncio.sleep(max(0, delay))
+    return False

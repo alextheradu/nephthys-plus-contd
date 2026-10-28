@@ -5,7 +5,6 @@ from typing import NamedTuple
 
 from httpx import HTTPStatusError
 from pydantic import BaseModel
-from slack_sdk.web.async_client import AsyncWebClient
 
 from nephthys.utils.ai import ai_client
 from nephthys.utils.ai import ChoiceQuestion
@@ -13,6 +12,7 @@ from nephthys.utils.ai import decisions
 from nephthys.utils.ai import DecisionsResponse
 from nephthys.utils.ai import StructuredGuidance
 from nephthys.utils.env import env
+from nephthys.utils.slack_files import download_slack_file
 
 NO_MATCH = "none"
 # "Event name #C123" on one line, or just "#C123" on the line after the name
@@ -192,16 +192,12 @@ async def refresh_faq_entries() -> None:
     if not canvas_id:
         return
     try:
-        info = await AsyncWebClient(token=env.slack_user_token).files_info(
-            file=canvas_id
+        data = await download_slack_file(
+            {"id": canvas_id}, 2 * 1024 * 1024, allow_html=True
         )
-        file: dict = info["file"]  # type: ignore (assuming file exists)
-        url = file.get("url_private_download") or file["url_private"]
-        async with env.session.get(
-            url, headers={"Authorization": f"Bearer {env.slack_user_token}"}
-        ) as res:
-            res.raise_for_status()
-            html = await res.text()
+        if data is None:
+            raise ValueError("FAQ canvas could not be downloaded")
+        html = data.decode("utf-8", errors="replace")
         entries = parse_faq_canvas(html)
     except Exception as e:
         entries = []

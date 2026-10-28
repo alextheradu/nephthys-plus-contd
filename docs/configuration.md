@@ -29,6 +29,28 @@ These should always be configured.
 | `APP_TITLE` | Required | A title to be shown to helpers at the top of the App Home, and in the Lobby | _N/A_ |
 | `BASE_URL` | Required | Public HTTPS URL that the bot's web server is accessible from | _N/A_ |
 
+## Community channel invitations
+
+Set `SLACK_COMMUNITY_CHANNELS` to a comma-separated list of Slack channel IDs.
+Joining any channel in the list invites the person to all the others. For example,
+list your YSWS's main, help, and bulletin/announcements channels:
+
+```dotenv
+SLACK_COMMUNITY_CHANNELS="C_MAIN,C_HELP,C_ANNOUNCEMENTS"
+```
+
+Use real channel IDs (not names). Include the help channel explicitly if you want
+it synced. When reusing this bot for another YSWS, just replace this list; there
+are no cont.d-specific channels or website dependencies. An empty or unset list
+disables invitations. Spaces, blank entries, and duplicate IDs are ignored.
+Existing members are left alone. This does not change support-team membership
+or remove anyone from a channel, and it does not backfill existing members.
+
+The bot must belong to every configured channel. Its app must subscribe to `member_joined_channel` and have
+`channels:read` and `channels:manage` for public channels, or `groups:read` and
+`groups:write` for private channels. Keep the event URL pointing at this bot's
+`/slack/events` endpoint. Reinstall the app after changing its scopes.
+
 ## AI provider
 
 It is highly recommended to configure an AI provider, which is used to generate ticket titles and categories using an LLM.
@@ -64,7 +86,13 @@ You can configure which models are used for different AI tasks.
 
 ### Attached files
 
-When a question has images, PDFs or text files attached, they are sent to `AI_TITLE_MODEL` along with the message when it writes the ticket title, so that model must accept file input. All of them are sent: images up to 5 MB each, PDFs up to 10 MB each and text files, up to 20 MB in total per message. Other file types are ignored. Category tagging and FAQ matching only see the message text. Files are downloaded with `SLACK_USER_TOKEN`, which needs the `files:read` user scope. As with other AI features, the files are sent to your AI provider, so it must not train on your prompts.
+Attachment and canvas downloads use the bot token first, then the user token if
+the bot cannot access the file. Grant `files:read` to the bot and reinstall the
+Slack app after adding the scope. The token's bot/user must also have access to
+the channel containing the file. Private download URLs are refreshed with
+`files.info`; a Slack login page is treated as a failed download, not file data.
+
+When a question has images, PDFs or text files attached, they are sent to `AI_TITLE_MODEL` along with the message when it writes the ticket title, so that model must accept file input. All of them are sent: images up to 5 MB each, PDFs up to 10 MB each and text files, up to 20 MB in total per message. Other file types are ignored. Category tagging and FAQ matching only see the message text. As with other AI features, the files are sent to your AI provider, so it must not train on your prompts.
 
 ### Identity verification (IDV) and FAQ matching
 

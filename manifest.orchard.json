@@ -1,0 +1,68 @@
+{
+  "display_information": {
+    "name": "cont.d",
+    "description": "making support teams run smoothly (and my partner proud)",
+    "background_color": "#c47600"
+  },
+  "features": {
+    "app_home": {
+      "home_tab_enabled": true,
+      "messages_tab_enabled": true,
+      "messages_tab_read_only_enabled": true
+    },
+    "bot_user": {
+      "display_name": "cont.d",
+      "always_online": false
+    }
+  },
+  "oauth_config": {
+    "scopes": {
+      "user": [
+        "bookmarks:read",
+        "chat:write",
+        "files:read",
+        "search:read"
+      ],
+      "bot": [
+        "channels:history",
+        "metadata.message:read",
+        "channels:read",
+        "chat:write",
+        "chat:write.customize",
+        "chat:write.public",
+        "groups:history",
+        "groups:read",
+        "groups:write",
+        "reactions:read",
+        "reactions:write",
+        "users:read",
+        "files:write",
+        "im:write",
+        "im:read",
+        "im:history",
+        "channels:manage"
+      ]
+    }
+  },
+  "settings": {
+    "event_subscriptions": {
+      "request_url": "https://contd-bot.k.hackclub.dev/slack/events",
+      "bot_events": [
+        "app_home_opened",
+        "member_joined_channel",
+        "member_left_channel",
+        "message.channels",
+        "message.groups",
+        "message_metadata_posted"
+      ]
+    },
+    "interactivity": {
+      "is_enabled": true,
+      "request_url": "https://contd-bot.k.hackclub.dev/slack/events",
+      "message_menu_options_url": "https://contd-bot.k.hackclub.dev/slack/events"
+    },
+    "org_deploy_enabled": false,
+    "socket_mode_enabled": false,
+    "token_rotation_enabled": false
+  }
+}

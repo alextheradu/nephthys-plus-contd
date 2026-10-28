@@ -1,5 +1,4 @@
-from nephthys.events.app_home_opened import AppHomeView
-from nephthys.utils.env import env
+from nephthys.views.home import AppHomeView
 from nephthys.views.home.components.header import get_header
 
 
@@ -14,11 +13,6 @@ def get_loading_view(home_type: AppHomeView):
                     "type": "mrkdwn",
                     "text": ":hourglass_flowing_sand: loading...",
                 },
-            },
-            {
-                "type": "image",
-                "image_url": f"{env.base_url}/public/loading.gif",
-                "alt_text": "Loading...",
             },
         ],
     }

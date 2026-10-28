@@ -23,10 +23,11 @@
                 "files:read",
                 "search:read"
             ],
-          "bot": [
+            "bot": [
                 "channels:history",
                 "metadata.message:read",
                 "channels:read",
+                "channels:manage",
                 "chat:write",
                 "chat:write.customize",
                 "chat:write.public",
@@ -36,7 +37,8 @@
                 "reactions:read",
                 "reactions:write",
                 "users:read",
-                "files:write"
+                "files:write",
+                "files:read"
             ]
         }
     },

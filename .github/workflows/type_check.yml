@@ -22,3 +22,5 @@ jobs:
         run: uv sync --locked --dev
       - name: Run Pyright
         run: uv run pyright
+      - name: Run regression tests
+        run: uv run python -m unittest discover -s tests -v

@@ -22,6 +22,8 @@ from nephthys.utils import faq
 from nephthys.utils.ai import ai_client
 from nephthys.utils.ai import provider_routing
 from nephthys.utils.env import env
+from nephthys.utils.slack_files import download_slack_file
+from nephthys.utils.slack_files import slack_file_info
 
 WORKSPACE_URL = "https://hackclub.slack.com"
 MAX_TOOL_ROUNDS = 8
@@ -200,14 +202,13 @@ class _Run:
                     for b in res.get("bookmarks", [])
                 ]
             if name == "read_canvas":
-                info = await self.user_client.files_info(file=args["file_id"])
-                f = info.get("file", {})
-                url = f.get("url_private_download") or f.get("url_private")
-                text = ""
-                if url:
-                    text = await _fetch_text(
-                        url, {"Authorization": f"Bearer {env.slack_user_token}"}
-                    )
+                f = await slack_file_info({"id": args["file_id"]})
+                data = await download_slack_file(f, 2 * 1024 * 1024, allow_html=True)
+                text = (
+                    _strip_html(data.decode("utf-8", errors="replace"), 12000)
+                    if data
+                    else ""
+                )
                 return {
                     "title": f.get("title"),
                     "content": text or str(f.get("content", ""))[:12000],

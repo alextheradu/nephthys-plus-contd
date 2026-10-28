@@ -4,6 +4,15 @@ Nephthys Plus is the bot powering many support channels in the Hack Club Slack s
 
 ## Features
 
+### Community channel membership
+
+Set `SLACK_COMMUNITY_CHANNELS` to a comma-separated list of channel IDs (for
+example, your YSWS's main, help, and announcements channels). Anyone joining one
+is automatically invited to the others they aren't already in. Change the list
+to reuse the bot for another YSWS; leave it blank to disable this feature.
+The bot must be in every listed channel. See [configuration](docs/configuration.md#community-channel-invitations)
+for the Slack scopes and event subscription.
+
 ### Category tags
 
 Category tags are used to classify tickets into broader categories such as "Fulfillment", "Identity", or "Platform Issues". When a new ticket is created, AI analyzes the message content and automatically assigns the most relevant category tag.

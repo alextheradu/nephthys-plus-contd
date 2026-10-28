@@ -153,8 +153,15 @@ async def handle_assigned_tickets_page(
 
 
 @app.event("member_joined_channel")
-async def handle_member_joined_channel(event: Dict[str, Any], client: AsyncWebClient):
-    await channel_join(ack=AsyncAck(), event=event, client=client)
+async def handle_member_joined_channel(
+    event: Dict[str, Any], client: AsyncWebClient, context: dict
+):
+    await channel_join(
+        ack=AsyncAck(),
+        event=event,
+        client=client,
+        bot_user_id=context.get("bot_user_id"),
+    )
 
 
 @app.event("member_left_channel")

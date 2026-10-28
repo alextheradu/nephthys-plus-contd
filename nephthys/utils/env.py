@@ -140,6 +140,13 @@ class Environment:
         self.base_url: str = get_base_url()
 
         self.slack_help_channel = os.environ.get("SLACK_HELP_CHANNEL", "unset")
+        self.slack_community_channels = tuple(
+            dict.fromkeys(
+                channel.strip()
+                for channel in os.environ.get("SLACK_COMMUNITY_CHANNELS", "").split(",")
+                if channel.strip()
+            )
+        )
         self.slack_ticket_channel = os.environ.get("SLACK_TICKET_CHANNEL", "unset")
         self.slack_bts_channel = os.environ.get("SLACK_BTS_CHANNEL", "unset")
         self.slack_maintainer_id = os.environ.get("SLACK_MAINTAINER_ID", "unset")
