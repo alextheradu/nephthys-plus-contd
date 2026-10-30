@@ -106,6 +106,56 @@ class CommunityChannelTests(unittest.IsolatedAsyncioTestCase):
         await self.deliver("CMAIN", inviter="UBOT")
         self.client.conversations_invite.assert_not_awaited()
 
+    def test_join_request_phrasing(self):
+        for text in (
+            "add me to the contd slack channel",
+            "ADD ME TO THE CONT.D SLACK CHANNEL!!!",
+            "hey, can you add me to cont'd channels pls?",
+            "Add-me to <#CMAIN|contd>",
+            "why don't you add me to contd",
+            "not sure if this is right but add me to contd",
+        ):
+            self.assertTrue(joins.is_join_request(text), text)
+        for text in (
+            "add me to the slack channel",
+            "what is contd?",
+            "address me",
+            "DON'T add me to the contd slack channel",
+            "dont add me to contd",
+            "please do not ever add me to cont.d",
+            "i dont want you to add me to contd",
+            "never add me to contd",
+            "stop trying to add me to contd!!",
+        ):
+            self.assertFalse(joins.is_join_request(text), text)
+
+    async def test_join_request_invites_to_every_channel(self):
+        event = {
+            "channel": "CRANDOM",
+            "user": "UNEW",
+            "ts": "1.0",
+            "text": "Add me to the contd slack channel!",
+        }
+        self.assertTrue(await joins.join_request(event, self.client))
+        self.assertEqual(
+            {
+                call.kwargs["channel"]
+                for call in self.client.conversations_invite.await_args_list
+            },
+            set(self.channels),
+        )
+        self.client.reactions_add.assert_awaited_once()
+
+    async def test_join_request_ignores_bots_and_other_messages(self):
+        base = {"channel": "CRANDOM", "user": "UNEW", "ts": "1.0"}
+        for event in (
+            {**base, "text": "hello"},
+            {**base, "text": "add me to contd", "bot_id": "B1"},
+            {**base, "text": "add me to contd", "subtype": "message_changed"},
+        ):
+            self.assertFalse(await joins.join_request(event, self.client))
+        self.client.conversations_invite.assert_not_awaited()
+
     async def test_helper_updates_are_preserved_even_with_sync_disabled(self):
         with patch.object(config.env, "slack_community_channels", ()):
             await self.deliver("CMAIN")

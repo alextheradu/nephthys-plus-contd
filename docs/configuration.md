@@ -46,6 +46,13 @@ disables invitations. Spaces, blank entries, and duplicate IDs are ignored.
 Existing members are left alone. This does not change support-team membership
 or remove anyone from a channel, and it does not backfill existing members.
 
+Anyone can also ask to be added by saying "add me to the contd slack channel"
+(or a variation like "add me to cont'd", in any caps or punctuation) in any
+channel the bot is in. The bot invites them to every listed channel and reacts
+with :white_check_mark:. In the help channel this doesn't open a ticket.
+Negated requests like "don't add me to contd" or "never add me to cont.d" are
+ignored.
+
 The bot must belong to every configured channel. Its app must subscribe to `member_joined_channel` and have
 `channels:read` and `channels:manage` for public channels, or `groups:read` and
 `groups:write` for private channels. Keep the event URL pointing at this bot's

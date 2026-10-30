@@ -39,6 +39,7 @@ from nephthys.errors.errors import TicketNotClosedError
 from nephthys.events.app_home_opened import on_app_home_opened
 from nephthys.events.app_home_opened import open_app_home
 from nephthys.events.channel_join import channel_join
+from nephthys.events.channel_join import join_request
 from nephthys.events.channel_left import channel_left
 from nephthys.events.message_creation import get_forwarded_ticket_user
 from nephthys.events.message_creation import on_message
@@ -137,6 +138,9 @@ async def handle_message(event: Dict[str, Any], client: AsyncWebClient):
         event.get("subtype") == "message_changed"
         and event["message"].get("subtype") == "tombstone"
     ) or event.get("subtype") == "message_deleted"
+
+    if not is_message_deletion and await join_request(event, client):
+        return
 
     if event["channel"] == env.slack_help_channel or get_forwarded_ticket_user(event):
         async with perf_timer("Processing message event (total time)"):

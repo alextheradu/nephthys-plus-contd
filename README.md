@@ -8,7 +8,9 @@ Nephthys Plus is the bot powering many support channels in the Hack Club Slack s
 
 Set `SLACK_COMMUNITY_CHANNELS` to a comma-separated list of channel IDs (for
 example, your YSWS's main, help, and announcements channels). Anyone joining one
-is automatically invited to the others they aren't already in. Change the list
+is automatically invited to the others they aren't already in. Saying "add me to
+the contd slack channel" (any caps/punctuation) in any channel the bot is in
+invites them to all of them too. Change the list
 to reuse the bot for another YSWS; leave it blank to disable this feature.
 The bot must be in every listed channel. See [configuration](docs/configuration.md#community-channel-invitations)
 for the Slack scopes and event subscription.
