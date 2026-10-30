@@ -186,6 +186,8 @@ class CommunityChannelTests(unittest.IsolatedAsyncioTestCase):
         for raw, expected in [
             ("", ()),
             (" CMAIN, CHELP,,CMAIN, CNEWS ", self.channels),
+            ('"CMAIN,CHELP,CNEWS"', self.channels),
+            ("'CMAIN, CHELP, CNEWS'", self.channels),
         ]:
             with patch.dict(
                 os.environ, {**TEST_ENV, "SLACK_COMMUNITY_CHANNELS": raw}, clear=True

@@ -41,6 +41,12 @@ def get_environ_bool(name: str, default: bool) -> bool:
     raise ValueError(f"Invalid boolean env var {name}={value!r}")
 
 
+def parse_channel_list(value: str) -> tuple[str, ...]:
+    # Hosts that don't use dotenv keep the quotes from `"C1,C2"`, so strip them
+    channels = (channel.strip().strip("\"'").strip() for channel in value.split(","))
+    return tuple(dict.fromkeys(channel for channel in channels if channel))
+
+
 @dataclass
 class HCAConfig:
     client_id: str
@@ -140,19 +146,11 @@ class Environment:
         self.base_url: str = get_base_url()
 
         self.slack_help_channel = os.environ.get("SLACK_HELP_CHANNEL", "unset")
-        self.slack_community_channels = tuple(
-            dict.fromkeys(
-                channel.strip()
-                for channel in os.environ.get("SLACK_COMMUNITY_CHANNELS", "").split(",")
-                if channel.strip()
-            )
+        self.slack_community_channels = parse_channel_list(
+            os.environ.get("SLACK_COMMUNITY_CHANNELS", "")
         )
-        self.slack_listen_channels = tuple(
-            dict.fromkeys(
-                channel.strip()
-                for channel in os.environ.get("SLACK_LISTEN_CHANNELS", "").split(",")
-                if channel.strip()
-            )
+        self.slack_listen_channels = parse_channel_list(
+            os.environ.get("SLACK_LISTEN_CHANNELS", "")
         )
         self.slack_ticket_channel = os.environ.get("SLACK_TICKET_CHANNEL", "unset")
         self.slack_bts_channel = os.environ.get("SLACK_BTS_CHANNEL", "unset")
