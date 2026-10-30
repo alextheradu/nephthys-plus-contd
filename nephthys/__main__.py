@@ -11,6 +11,7 @@ from dotenv import load_dotenv
 from slack_bolt.adapter.socket_mode.async_handler import AsyncSocketModeHandler
 from starlette.applications import Starlette
 
+from nephthys.events.channel_join import join_listen_channels
 from nephthys.tasks.close_stale import close_stale_tickets
 from nephthys.tasks.daily_stats import send_daily_stats
 from nephthys.tasks.update_helpers import update_helpers
@@ -79,6 +80,7 @@ async def main(_app: Starlette):
 
         delete_msg_task = asyncio.create_task(process_queue())
         await update_helpers()
+        await join_listen_channels(env.slack_client)
         await refresh_faq_entries()
         handler = None
         if env.slack_app_token:

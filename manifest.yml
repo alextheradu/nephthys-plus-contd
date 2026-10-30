@@ -34,6 +34,7 @@
                 "channels:history",
                 "channels:read",
                 "channels:manage",
+                "channels:join",
                 "chat:write",
                 "chat:write.customize",
                 "chat:write.public",

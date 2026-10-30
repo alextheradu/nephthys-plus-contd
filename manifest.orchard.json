@@ -40,7 +40,8 @@
         "im:write",
         "im:read",
         "im:history",
-        "channels:manage"
+        "channels:manage",
+        "channels:join"
       ]
     }
   },

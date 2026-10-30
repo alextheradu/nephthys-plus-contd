@@ -53,6 +53,18 @@ with :white_check_mark:. In the help channel this doesn't open a ticket.
 Negated requests like "don't add me to contd" or "never add me to cont.d" are
 ignored.
 
+The bot only hears messages in channels it's a member of. To listen in more
+channels, either `/invite` the bot there (works for private channels too), or
+list public channel IDs in `SLACK_LISTEN_CHANNELS`:
+
+```dotenv
+SLACK_LISTEN_CHANNELS="C_LOUNGE,C_SHIP"
+```
+
+On startup the bot joins every channel in `SLACK_LISTEN_CHANNELS` and
+`SLACK_COMMUNITY_CHANNELS`. This needs the `channels:join` scope. Private
+channels can't be joined this way; they're logged and skipped.
+
 The bot must belong to every configured channel. Its app must subscribe to `member_joined_channel` and have
 `channels:read` and `channels:manage` for public channels, or `groups:read` and
 `groups:write` for private channels. Keep the event URL pointing at this bot's

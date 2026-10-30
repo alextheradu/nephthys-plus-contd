@@ -147,6 +147,13 @@ class Environment:
                 if channel.strip()
             )
         )
+        self.slack_listen_channels = tuple(
+            dict.fromkeys(
+                channel.strip()
+                for channel in os.environ.get("SLACK_LISTEN_CHANNELS", "").split(",")
+                if channel.strip()
+            )
+        )
         self.slack_ticket_channel = os.environ.get("SLACK_TICKET_CHANNEL", "unset")
         self.slack_bts_channel = os.environ.get("SLACK_BTS_CHANNEL", "unset")
         self.slack_maintainer_id = os.environ.get("SLACK_MAINTAINER_ID", "unset")

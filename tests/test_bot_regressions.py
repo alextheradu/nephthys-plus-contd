@@ -146,6 +146,24 @@ class CommunityChannelTests(unittest.IsolatedAsyncioTestCase):
         )
         self.client.reactions_add.assert_awaited_once()
 
+    async def test_bot_joins_listen_and_community_channels(self):
+        self.client.conversations_join.side_effect = [
+            {"ok": True},
+            slack_error("method_not_supported_for_channel_type"),
+            {"ok": True},
+            {"ok": True},
+        ]
+        with patch.object(config.env, "slack_listen_channels", ("CLOUNGE", "CMAIN")):
+            with self.assertLogs(level="WARNING"):
+                await joins.join_listen_channels(self.client)
+        self.assertEqual(
+            [
+                call.kwargs["channel"]
+                for call in self.client.conversations_join.await_args_list
+            ],
+            [*self.channels, "CLOUNGE"],
+        )
+
     async def test_join_request_ignores_bots_and_other_messages(self):
         base = {"channel": "CRANDOM", "user": "UNEW", "ts": "1.0"}
         for event in (

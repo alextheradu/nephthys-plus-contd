@@ -50,6 +50,26 @@ async def invite_to_community_channels(
             )
 
 
+async def join_listen_channels(client: AsyncWebClient):
+    """Join the community and listen channels so join requests there are heard.
+
+    Only works for public channels; private ones need the bot invited by hand.
+    """
+    for channel in dict.fromkeys(
+        env.slack_community_channels + env.slack_listen_channels
+    ):
+        try:
+            await client.conversations_join(channel=channel)
+        except SlackApiError as error:
+            logging.warning(
+                "Could not join channel %s (invite the bot by hand if it's private): %s",
+                channel,
+                error.response.get("error"),
+            )
+        except Exception:
+            logging.exception("Could not join channel %s", channel)
+
+
 async def join_request(event: dict, client: AsyncWebClient) -> bool:
     """Invite the sender to every community channel if they asked to be added.
 
